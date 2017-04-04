@@ -37,11 +37,11 @@ def get_model_variants(model, params_list):
 def get_models(model, params_list):
     """wrapper for get_model_variants.
     same inputs but handles exceptions due to no params_list,
-    in which case a list of (model(), 'Default') is returned."""
+    in which case a tuple of (model(), 'Default') is returned."""
     try:
         return get_model_variants(model, params_list)
     except TypeError:
-        return [(model(), 'Default')]
+        return ((model(), 'Default'),)
 
 
 def five_fold_validation(model_func, X, y, params_list=None):
