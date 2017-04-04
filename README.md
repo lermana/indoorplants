@@ -1,6 +1,6 @@
 # modeling
 
-This is a Python library of helper functions and workflow automaters that I use to make my life easier, the first installment of which is **evaluation**.
+This is a Python library of helper functions and workflow automaters that I use to make my life easier, the first installment of which is *evaluation*.
 
 ### evaluation
 
@@ -18,9 +18,9 @@ This is a first pass; the code works, but has not been optimized. Additionally, 
 
 Some key functions are:
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;five_fold_validation: automated model evaluation. 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*five_fold_validation*: automated model evaluation. 
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*validate_multiple_models*: *five_fold_model_validation* for multiple models, returning aggregate results. 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*validate_multiple_models*: five_fold_model_validation for multiple models, returning aggregate results. 
 
 More information on these functions can be found on their respective pages on the wiki. 
 
@@ -28,7 +28,7 @@ More information on these functions can be found on their respective pages on th
 
 #### additional functions
 
-Additional functions include decomposed routines used by the aforementioned validation functions, as well as some wrappers for sk-learn's *confusion_matrix* for evaluating the performance of classifiers.
+Additional functions include decomposed routines used by the aforementioned validation functions, as well as some wrappers for sk-learn's *confusion_matrix*, for evaluating the performance of classifiers.
 
 --
 
