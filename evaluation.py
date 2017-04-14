@@ -124,7 +124,27 @@ def format_validation(results, problem):
     return get_format(problem)(results)
 
 
-def five_fold_validation(model_func, X, y, problem, params_list=None):
+def get_scaled_data(scaler_obj, data):
+    return pandas.DataFrame(scaler_obj().fit_transform(data),
+                            index=data.index,
+                            columns=data.columns)
+
+
+def determine_to_scale(scaler_obj, data):
+    if scaler_obj is not None:
+        return get_scaled_data(scaler_obj, data)
+    else:
+        return data
+
+
+def scale_data(scaler_obj, X_train, y_train, X_test, y_test):
+    return (determine_to_scale(scaler_obj, X_train),
+            determine_to_scale(scaler_obj, y_train.to_frame()),
+            determine_to_scale(scaler_obj, X_test),
+            determine_to_scale(scaler_obj, y_test.to_frame()))
+
+
+def five_fold_validation(model_func, X, y, problem, params_list=None, scaler_obj=None):
     results = []
     for fold, (train_index, test_index) in enumerate(split_data(y, problem), 1):
         for model, params in get_models(model_func, params_list):
@@ -137,17 +157,18 @@ def five_fold_validation(model_func, X, y, problem, params_list=None):
             except AttributeError:
                 itersults.append(params)
             for score in train_and_test(model, 
-                                        X.iloc[train_index], 
-                                        y.iloc[train_index], 
-                                        X.iloc[test_index], 
-                                        y.iloc[test_index], 
+                                        *scale_data(scaler_obj, 
+                                                    X.iloc[train_index], 
+                                                    y.iloc[train_index], 
+                                                    X.iloc[test_index], 
+                                                    y.iloc[test_index]),
                                         problem):
                 itersults.append(score)
             results.append(itersults)
     return format_validation(results, problem)
 
 
-def validate_multiple_models(model_funcs, X, y, params_list=None):
+def validate_multiple_models(model_funcs, X, y, problem, params_list=None, scaler_obj=None):
     results = []
     for model_func in model_funcs:
         model_name = str(model_func).split()[1].split('.')[3][:-2]
@@ -155,7 +176,9 @@ def validate_multiple_models(model_funcs, X, y, params_list=None):
                                       five_fold_validation(model_func, 
                                                            X, 
                                                            y, 
-                                                           params_list)},
+                                                           problem,
+                                                           params_list,
+                                                           scaler_obj)},
                                       axis=1))
     return pandas.concat(results, axis=1)
 
