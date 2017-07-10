@@ -1,212 +1,139 @@
-import pandas
-import numpy
-
-from sklearn.model_selection import StratifiedKFold, \
-                                    KFold
-
+import pandas as pd
+import numpy as np
+from itertools import chain
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix, \
                             accuracy_score, \
                             precision_score, \
                             recall_score, \
-                            f1_score
+                            f1_score, \
+                            mean_squared_error, \
+                            r2_score
 
 
-
-def get_function(func_clf, func_reg, problem):
-    try:
-        return {'clf': func_clf, 'reg': func_reg}[problem]
-    except KeyError:
-        raise KeyError("Must pass either 'clf' or 'reg'.")
-
-
-def generate_folds(fold_obj, y, n_splits=5, random_state=0):
-    return fold_obj(n_splits=n_splits, 
-                    shuffle=True, 
-                    random_state=random_state).split(numpy.zeros(len(y)),
-                                                     y)
-
-
-def split_for_clf(y):
-    return generate_folds(StratifiedKFold, y)
-
-
-def split_for_reg(y):
-    return generate_folds(KFold, y)
-
-
-def get_split_func(problem):
-    return get_function(split_for_clf, split_for_reg, problem)
-
-
-def split_data(y, problem):
-    return get_split_func(problem)(y)
-
-
-def score_reg(model, X_train, y_train, X_test, y_test):
-    return (model.score(X_train, y_train), 
-            model.score(X_test, y_test))
-
-
-def score_clf(model, X_train, y_train, X_test, y_test):
+def _train_and_score(model, X_train, y_train, X_test, y_test, 
+                     score_func, train_scores):
+    
+    model = model.fit(X_train, y_train)
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
-    return (accuracy_score(y_train, 
-                           y_hat_train),
-            accuracy_score(y_test, 
-                           y_hat_test),  
-            precision_score(y_test, 
-                            y_hat_test),
-            recall_score(y_test, 
-                         y_hat_test),
-            f1_score(y_test, 
-                     y_hat_test))
 
-
-def get_score_func(problem):
-    return get_function(score_clf, score_reg, problem)
-
-
-def score_model(model, X_train, y_train, X_test, y_test, problem):
-    return get_score_func(problem)(model, X_train, y_train, X_test, y_test)
-
-
-def train_and_test(model, X_train, y_train, X_test, y_test, problem):
-    model = model.fit(X_train, y_train)
-    return score_model(model, 
-                       X_train, 
-                       y_train, 
-                       X_test, 
-                       y_test, 
-                       problem)
-
-
-def get_model_variants(model, params_list):
-    return ((model(**params), params) for params in params_list)
-    
-
-def get_models(model, params_list):
-    try:
-        return get_model_variants(model, params_list)
-    except TypeError:
-        return ((model(), 'Default'),)
-
-
-def results_dataframe(results, cols):
-    return pandas.DataFrame(results,
-                            columns=cols).set_index(['trial', 
-                                                     'params'],
-                                                    drop=True)
-
-
-def format_clf_validation(results):
-    cols = ['trial',
-            'params',
-            'train_accuracy',
-            'test_accuracy',
-            'test_precision',
-            'test_recall',
-            'test_f1score']
-    return results_dataframe(results, cols)
-
-
-def format_reg_validation(results):
-    cols = ['trial',
-            'params',
-            'train_rsquared',
-            'test_rsquared']
-    return results_dataframe(results, cols)
-
-
-def get_format(problem):
-    return get_function(format_clf_validation, format_reg_validation, problem)
-
-def format_validation(results, problem):
-    return get_format(problem)(results)
-
-
-def get_scaled_data(scaler_obj, data):
-    return pandas.DataFrame(scaler_obj().fit_transform(data),
-                            index=data.index,
-                            columns=data.columns)
-
-
-def determine_to_scale(scaler_obj, data):
-    if scaler_obj is not None:
-        return get_scaled_data(scaler_obj, data)
+    if train_scores is True:
+        return ((score_func(y_train, y_hat_train),
+                 score_func(y_test, y_hat_test)))
     else:
-        return data
+        return (score_func(y_test, y_hat_test))
 
 
-def scale_data(scaler_obj, X_train, y_train, X_test, y_test):
-    return (determine_to_scale(scaler_obj, X_train),
-            determine_to_scale(scaler_obj, y_train.to_frame()),
-            determine_to_scale(scaler_obj, X_test),
-            determine_to_scale(scaler_obj, y_test.to_frame()))
+def _cv(X, y, model, score_func, splits=5, scale_obj=None, 
+        param_name=None, param_range=None, train_sizes=None,
+        train_scores=True):
+        
+        results = []
+        skf = StratifiedKFold(n_splits=splits,
+                              random_state=0)
+
+        for train, test in skf.split(X, y):
+            
+            if scale_obj is not None:
+                X_train = scale_obj().fit_transform(X.iloc[train, :])
+                X_test = scale_obj().fit_transform(X.iloc[test, :])
+            else:
+                X_train = X.iloc[train, :]
+                X_test = X.iloc[test, :]
+                
+            y_train = y.iloc[train]
+            y_test = y.iloc[test]
+            
+            results.append(_train_and_score(model, X_train, y_train, 
+                                            X_test, y_test, score_func, 
+                                            train_scores))
+        return results
 
 
-def five_fold_validation(model_func, X, y, problem, params_list=None, scaler_obj=None):
-    results = []
-    for fold, (train_index, test_index) in enumerate(split_data(y, problem), 1):
-        for model, params in get_models(model_func, params_list):
-            itersults = []
-            itersults.append(fold)
-            try:
-                itersults.append(', '.join('{}: {}'.format(param, 
-                                                           val) 
-                                        for param, val in params.items()))
-            except AttributeError:
-                itersults.append(params)
-            for score in train_and_test(model, 
-                                        *scale_data(scaler_obj, 
-                                                    X.iloc[train_index], 
-                                                    y.iloc[train_index], 
-                                                    X.iloc[test_index], 
-                                                    y.iloc[test_index]),
-                                        problem):
-                itersults.append(score)
-            results.append(itersults)
-    return format_validation(results, problem)
+def precision_recall(y, y_hat):
+    return precision_score(y, y_hat), recall_score(y, y_hat)
 
 
-def validate_multiple_models(model_funcs, X, y, problem, params_list=None, scaler_obj=None):
-    results = []
-    for model_func in model_funcs:
-        model_name = str(model_func).split()[1].split('.')[3][:-2]
-        results.append(pandas.concat({model_name:
-                                      five_fold_validation(model_func, 
-                                                           X, 
-                                                           y, 
-                                                           problem,
-                                                           params_list,
-                                                           scaler_obj)},
-                                      axis=1))
-    return pandas.concat(results, axis=1)
+def cv_prec_rec(X, y, model, splits=5, scale_obj=None):
+    
+    results = _cv(X, y, model, precision_recall, 
+                  splits, scale_obj)
+    results = np.array([tuple(chain(*trial)) for trial in results])
+    
+    train = pd.concat({'train': pd.DataFrame(results[:, :2], 
+                                    columns=['precision',
+                                              'recall'])},
+                      axis=1)
+    test = pd.concat({'test': pd.DataFrame(results[:, :2], 
+                                    columns=['precision',
+                                             'recall'])},
+                      axis=1)
+    
+    return train.join(test).mean().rename('score').to_frame()
 
 
-def get_confusion(y_test, y_hat, index):
-    return pandas.DataFrame(confusion_matrix(y_test, 
-                                             y_hat),
-                            index=index,
-                            columns=index)
+def cv_conf_mat(X, y, model, splits=5, scale_obj=None):
+    results = _cv(X, y, model, confusion_matrix, 
+                  splits, scale_obj, train_scores=False)
+    
+    results = [pd.concat({i: pd.DataFrame(trial,
+                                index=['neg_true', 'pos_true'],
+                                columns=['neg_pred', 'pos_pred'])}) 
+                   for i, trial in enumerate(results, 1)]
+    
+    return pd.concat(results)
 
 
-def get_precision(y_test, y_hat, index):
-    return pandas.DataFrame(
-                numpy.diag(
-                    confusion_matrix(y_test,
-                                     y_hat)
-                         / confusion_matrix(y_test,
-                                            y_hat).sum(axis=0)
-                 ), index=index,
-                    columns=['Precision'])
+def get_model_name(model_func):
+    return str(model_func).split('(')[0]
 
 
-def get_recall(y_test, y_hat, index):
-    return pandas.DataFrame(
-                numpy.diag(
-                    confusion_matrix(y_test,
-                                     y_hat)
-                         / confusion_matrix(y_test,
-                                            y_hat).sum(axis=1)
-                 ), index=index,
-                    columns=['Recall'])
+def plot_validation_curve(model_func, X, y, param_name, 
+                          param_range, cv=5, scoring='f1',
+                          semilog=False):
+    
+    train_scores, test_scores = \
+                validation_curve(model_func, 
+                                 X, 
+                                 y,
+                                 param_name=param_name, 
+                                 param_range=param_range,
+                                 cv=cv, 
+                                 scoring=scoring)
+    
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    
+    plt.figure(figsize=(11, 8))
+    title = plt.title('Validation Curve: {}, across {}'.format(
+                            get_model_name(model_func),
+                            param_name))
+
+    xlab = plt.xlabel(param_name)
+    ylab = plt.ylabel(scoring)
+    plt.ylim(0.0, 1.1)
+    
+    if semilog is True:
+        plt.semilogx(param_range, train_scores_mean, 
+                     label="Training score", color="darkorange", lw=2)
+    else:
+        plt.plot(param_range, train_scores_mean, label="Training score",
+                 color="darkorange", lw=2)
+    plt.fill_between(param_range, train_scores_mean - train_scores_std,
+                     train_scores_mean + train_scores_std, alpha=0.2,
+                     color="darkorange", lw=2)
+    if semilog is True:
+        plt.semilogx(param_range, test_scores_mean, 
+                     label="Cross-validation score", color="navy", lw=2)
+    else:
+        plt.semilogx(param_range, test_scores_mean, 
+                     label="Cross-validation score", color="navy", lw=2)
+    
+    plt.fill_between(param_range, test_scores_mean - test_scores_std,
+                     test_scores_mean + test_scores_std, alpha=0.2,
+                     color="navy", lw=2)
+
+    plt.legend(loc="best")
