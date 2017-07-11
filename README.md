@@ -1,3 +1,3 @@
 # modeling
 
-Currently under construction, evlaution module works though.
+Currently under construction, evaluation module works though.
