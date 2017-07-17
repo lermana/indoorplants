@@ -1,4 +1,8 @@
 import numpy as np
+import pandas as pd
+
+import evaluation
+
 
 def balance_binary_classes(y):
     val_counts = y.value_counts()
@@ -27,3 +31,28 @@ def balance_binary_classes(y):
     bal_inds.append(np.concatenate((minor_inds,
                                     avail_inds)))
     return bal_inds
+
+
+def _cv(table, bal_inds, X_cols, y_cols, model, score_func, 
+        splits=5, scale_obj=None):
+    i, num, results = 0, len(bal_inds), []
+    while i < num:
+        new_table = table[table.index.isin(bal_inds[i])]
+        results.append(
+            pd.concat({i + 1: 
+                evaluation._cv(new_table[X_cols], 
+                               new_table[y_cols],
+                               model, score_func, splits,
+                               scale_obj)}))
+        i += 1
+    return pd.concat(results)
+
+
+def cv_score(table, bal_inds, X_cols, y_cols, model, score_func, 
+             splits=5, scale_obj=None):
+    results = _cv(table, bal_inds, X_cols, y_cols, model, 
+                  score_func, splits, scale_obj)
+    m = results.groupby(results.index.get_level_values(1)).mean()
+    s = results.groupby(results.index.get_level_values(1)).std()
+    return pd.concat({'mean': m}, axis=1
+                ).join(pd.concat({'std. dev.': s}, axis=1))
