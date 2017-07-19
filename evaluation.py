@@ -91,13 +91,17 @@ def cv_score(**kwargs):
     return _cv_score(_cv_format(**kwargs))
 
 
-def cv_conf_mat(X, y, model, splits=5, scale_obj=None):
-    results = _cv_engine(X, y, model, confusion_matrix, 
-                         splits, scale_obj, False)
+def cv_conf_mat(X=None, y=None, model=None, splits=5, 
+               scale_obj=None):
     
-    results = [pd.concat({i: pd.DataFrame(trial,
-                                index=['neg_true', 'pos_true'],
-                                columns=['neg_pred', 'pos_pred'])}) 
+    results = _cv_engine(X=X, y=y, model=model, 
+                        score_funcs=[confusion_matrix], 
+                        splits=splits, scale_obj=scale_obj, 
+                        train_scores=False)
+    
+    results = [pd.concat({i + 1: pd.DataFrame(trial[0],
+                            index=['neg_true', 'pos_true'],
+                            columns=['neg_pred', 'pos_pred'])}) 
                    for i, trial in enumerate(results, 1)]
     
     return pd.concat(results)
