@@ -33,26 +33,24 @@ def balance_binary_classes(y):
     return bal_inds
 
 
-def _cv(table, bal_inds, X_cols, y_cols, model, score_func, 
-        splits=5, scale_obj=None):
+def _cv_format(table=None, bal_inds=None, X_cols=None, 
+               y_cols=None, model=None, score_funcs=None, 
+               splits=5, scale_obj=None, train_scores=True):
     i, num, results = 0, len(bal_inds), []
     while i < num:
-        new_table = table[table.index.isin(bal_inds[i])]
+        df = table[table.index.isin(bal_inds[i])]
         results.append(
             pd.concat({i + 1: 
-                evaluation._cv(new_table[X_cols], 
-                               new_table[y_cols],
-                               model, score_func, splits,
-                               scale_obj)}))
+                evaluation._cv_format(X=df[X_cols], y=df[y_cols],
+                               model=model, score_funcs=score_funcs, 
+                               splits=splits, scale_obj=scale_obj,
+                               train_scores=train_scores)}))
         i += 1
     return pd.concat(results)
 
 
-def cv_score(table, bal_inds, X_cols, y_cols, model, score_func, 
-             splits=5, scale_obj=None):
-    results = _cv(table, bal_inds, X_cols, y_cols, model, 
-                  score_func, splits, scale_obj)
-    m = results.groupby(results.index.get_level_values(1)).mean()
-    s = results.groupby(results.index.get_level_values(1)).std()
-    return pd.concat({'mean': m}, axis=1
-                ).join(pd.concat({'std. dev.': s}, axis=1))
+def cv_score(**kwargs):
+    return evaluation._cv_score(_cv_format(**kwargs))
+
+    
+

@@ -5,24 +5,22 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import confusion_matrix
 
 
-def _train_and_score(model, X_train, y_train, X_test, y_test, 
-                     score_func, train_scores):
+def _train_and_score(model=None, score_funcs=None, train_scores=True,
+                     X_train=None, y_train=None, X_test=None, y_test=None):
     
     model = model.fit(X_train, y_train)
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
+    return [(score_func(y_train, 
+                        y_hat_train),
+            score_func(y_test, y_hat_test))
+            if train_scores is True else
+            (score_func(y_test, y_hat_test))
+            for score_func in score_funcs]
 
-    if train_scores is True:
-        return ((score_func(y_train, y_hat_train),
-                 score_func(y_test, y_hat_test)))
-    else:
-        return (score_func(y_test, y_hat_test))
+def _cv_engine(X=None, y=None, model=None, score_funcs=None, 
+               splits=5, scale_obj=None, train_scores=True):
 
-
-def _cv_engine(X, y, model, score_func, splits=5, scale_obj=None, 
-        param_name=None, param_range=None, train_sizes=None,
-        train_scores=True):
-        
         if model._estimator_type == 'classifier':
             skf = StratifiedKFold(n_splits=splits,
                                   random_state=0)
@@ -46,9 +44,11 @@ def _cv_engine(X, y, model, score_func, splits=5, scale_obj=None,
             y_train = y.iloc[train]
             y_test = y.iloc[test]
             
-            results.append(_train_and_score(model, X_train, y_train, 
-                                            X_test, y_test, score_func, 
-                                            train_scores))
+            results.append(_train_and_score(model=model, 
+                score_funcs=score_funcs, train_scores=train_scores,
+                X_train=X_train, y_train=y_train, X_test=X_test, 
+                y_test=y_test))
+        
         return results
 
 
@@ -56,46 +56,43 @@ def _get_score_name(score_func):
     return str(score_func).split()[1]
 
 
-def _cv(X, y, model, score_func, splits=5, scale_obj=None):
-    results = _cv_engine(X, y, model, score_func, splits, scale_obj)
-    results = pd.DataFrame(results, columns=['train', 'test'])
-    return pd.concat({_get_score_name(score_func): results})
+def _cv_format(X=None, y=None, model=None, score_funcs=None, 
+         splits=5, scale_obj=None, train_scores=True):
+    res = _cv_engine(model=model, score_funcs=score_funcs, 
+                     train_scores=train_scores, X=X, y=y, 
+                     splits=splits, scale_obj=scale_obj)
+    if train_scores is False:
+        cols = [_get_score_name(_) for _ in score_funcs]
+        return pd.DataFrame(res, columns=cols)
+    else:
+        res = np.array([tuple(chain(*_)) for _ in res])
+        i, n, dfs = 0, res.shape[1], []
+        while i < n:
+            dfs.append(pd.concat({
+                _get_score_name(score_funcs[i // 2]):
+                    pd.DataFrame(res[:, i:i+2], 
+                                columns=['train', 'test'])},
+                    axis=1))
+            i += 2
+        return dfs[0].join(dfs[1:])
 
 
-def cv_score(X, y, model, score_func, splits=5, scale_obj=None):
-    results = _cv(X, y, model, score_func, splits, scale_obj)
+def _cv_score(results):
     return results.mean().rename('mean').to_frame(
-            ).join(results.std().rename('std').to_frame())
+            ).join(results.std().rename('std').to_frame()
+            ).join(results.skew().rename('skew').to_frame()
+            ).join(results.kurtosis().rename('kurt').to_frame()
+            ).join(results.min().rename('min').to_frame()
+            ).join(results.max().rename('max').to_frame())
 
 
-def _get_two_scores(score_1, score_2):
-    def scores(y, y_hat):
-        return score_1(y, y_hat), score_2(y, y_hat)    
-    return scores
-
-
-def _cv_two(X, y, model, score_1, score_2, splits=5, scale_obj=None):
-    scores = _get_two_scores(score_1, score_2)
-    results = _cv_engine(X, y, model, scores, splits, scale_obj)
-    
-    results = np.array([tuple(chain(*trial)) for trial in results])
-    s1, s2 = _get_score_name(score_1), _get_score_name(score_2)
-    train = pd.concat({'train': pd.DataFrame(results[:, :2], 
-                                    columns=[s1, s2])}, axis=1)
-    test = pd.concat({'test': pd.DataFrame(results[:, :2], 
-                                    columns=[s1, s2])},axis=1)
-    return train.join(test)
-
-
-def cv_two_scores(X, y, model, score_1, score_2, splits=5, scale_obj=None):
-    results = _cv_two(X, y, model, score_1, score_2, splits, scale_obj)
-    return results.mean().rename('mean').to_frame(
-            ).join(results.std().rename('std').to_frame())
+def cv_score(**kwargs):
+    return _cv_score(_cv_format(**kwargs))
 
 
 def cv_conf_mat(X, y, model, splits=5, scale_obj=None):
-    results = _cv(X, y, model, confusion_matrix, 
-                  splits, scale_obj, train_scores=False)
+    results = _cv_engine(X, y, model, confusion_matrix, 
+                         splits, scale_obj, False)
     
     results = [pd.concat({i: pd.DataFrame(trial,
                                 index=['neg_true', 'pos_true'],
