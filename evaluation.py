@@ -27,7 +27,7 @@ def _cv_engine(X=None, y=None, model=None, score_funcs=None,
                                   random_state=0)
         elif model._estimator_type == 'regressor':
             skf = KFold(n_splits=splits,
-                        suffle=True,
+                        shuffle=True,
                         random_state=0)
         else:
             raise TypeError('Improper model type.')

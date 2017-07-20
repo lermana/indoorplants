@@ -110,6 +110,5 @@ def center_scale_plot(series, col_name, center_name, center_func, scale_name, sc
             arrowprops={'facecolor': 'black', 
                         'arrowstyle': "-|>"})
 
-    ax.set_xlim(left=0)
     ax.title.set_text('{}: histogram, {} & {}'.format(
                             col_name, center_name, scale_name))
