@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def center_scale_plot(series, col_name, center_name, center_func, scale_name, scale_func):
+def center_scale_plot(series, center_func, scale_func):
     # create figure and get max dimensions
     plt.figure()
     num_bins = min(int(round(series.nunique(), -2) / 10), 100)
@@ -16,9 +16,9 @@ def center_scale_plot(series, col_name, center_name, center_func, scale_name, sc
     bbox = {'fc': '1', 'pad': 3}
     ax.annotate(
     """{}: {}
-{}: {}""".format(center_name,
+{}: {}""".format(center_func.__name__,
                      round(center, 1),
-                     scale_name,
+                     scale_func.__name__,
                      round(scale, 1)),
         xy=(.8* xmaxtick, .8 * ymaxtick),
         bbox=bbox)
@@ -111,4 +111,6 @@ def center_scale_plot(series, col_name, center_name, center_func, scale_name, sc
                         'arrowstyle': "-|>"})
 
     ax.title.set_text('{}: histogram, {} & {}'.format(
-                            col_name, center_name, scale_name))
+                            series.name, 
+                            center_func.__name__, 
+                            scale_func.__name__))
