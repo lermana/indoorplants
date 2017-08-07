@@ -60,7 +60,7 @@ def validation_curve(model_func, X, y, param_name,
         model = model_func()
 
     train_scores, test_scores = \
-                skl.validation_curve(model_func(), 
+                skl.validation_curve(model, 
                                      X, 
                                      y,
                                      param_name=param_name, 
