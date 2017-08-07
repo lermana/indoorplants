@@ -4,10 +4,16 @@ import matplotlib.pyplot as plt
 
 
 def learning_curve(model_func, X, y, cv=5, score=None,
-                   train_sizes=np.linspace(.1, 1.0, 5)):
+                   train_sizes=np.linspace(.1, 1.0, 5),
+                   model_params=None):
+    
+    if model_params is not None:
+        model = model_func(**model_params)
+    else:
+        model = model_func()
     
     train_sizes, train_scores, test_scores = \
-                skl.learning_curve(model_func(), 
+                skl.learning_curve(model, 
                                    X, 
                                    y,
                                    cv=cv, 
@@ -46,8 +52,13 @@ def learning_curve(model_func, X, y, cv=5, score=None,
 
 def validation_curve(model_func, X, y, param_name, 
                      param_range, cv=5, score=None,
-                     semilog=False):
+                     semilog=False, other_params=None):
     
+    if other_params is not None:
+        model = model_func(**other_params)
+    else:
+        model = model_func()
+
     train_scores, test_scores = \
                 skl.validation_curve(model_func(), 
                                      X, 
