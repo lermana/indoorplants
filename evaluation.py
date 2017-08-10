@@ -27,7 +27,7 @@ def _cv_engine(X=None, y=None, model=None, score_funcs=None,
                                   random_state=0)
         elif model._estimator_type == 'regressor':
             skf = KFold(n_splits=splits,
-                        shuffle=True,
+                        suffle=True,
                         random_state=0)
         else:
             raise TypeError('Improper model type.')
@@ -53,24 +53,20 @@ def _cv_engine(X=None, y=None, model=None, score_funcs=None,
         return results
 
 
-def _get_score_name(score_func):
-    return str(score_func).split()[1]
-
-
 def _cv_format(X=None, y=None, model=None, score_funcs=None, 
          splits=5, scale_obj=None, train_scores=True):
     res = _cv_engine(model=model, score_funcs=score_funcs, 
                      train_scores=train_scores, X=X, y=y, 
                      splits=splits, scale_obj=scale_obj)
     if train_scores is False:
-        cols = [_get_score_name(_) for _ in score_funcs]
+        cols = [_.__name__ for _ in score_funcs]
         return pd.DataFrame(res, columns=cols)
     else:
         res = np.array([tuple(chain(*_)) for _ in res])
         i, n, dfs = 0, res.shape[1], []
         while i < n:
             dfs.append(pd.concat({
-                _get_score_name(score_funcs[i // 2]):
+                score_funcs[i // 2].__name__:
                     pd.DataFrame(res[:, i:i+2], 
                                 columns=['train', 'test'])},
                     axis=1))

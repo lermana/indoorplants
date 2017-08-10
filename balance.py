@@ -52,5 +52,17 @@ def _cv_format(table=None, bal_inds=None, X_cols=None,
 def cv_score(**kwargs):
     return evaluation._cv_score(_cv_format(**kwargs))
 
-    
 
+def cv_conf_mat(table=None, bal_inds=None, X_cols=None, 
+                y_cols=None, model=None, splits=5, 
+                scale_obj=None):
+    i, num, results = 0, len(bal_inds), []
+    while i < num:
+        df = table[table.index.isin(bal_inds[i])]
+        results.append(
+            pd.concat({i + 1: 
+                evaluation.cv_conf_mat(X=df[X_cols], y=df[y_cols],
+                               model=model, splits=splits, 
+                               scale_obj=scale_obj)}))
+        i += 1
+    return pd.concat(results)
