@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+
 def classs_across_feature(table, class_col, feature):
     classes = table[class_col].unique()
 
@@ -20,6 +21,26 @@ def classs_across_feature(table, class_col, feature):
     plt.legend(loc='best')
     title = plt.title('{}: by {}'.format(class_col, feature))
 
+
+def scatter_by_class(table, class_col, x, y):
+    classes = table[class_col].unique()
+
+    ax = table[table[class_col] == classes[0]
+              ].plot.scatter(figsize=(11, 8),
+                             x=x, y=y,
+                             label=classes[0])
+
+    for i, val in enumerate(classes[1:], 1):
+        table[table[class_col] == val
+                  ].plot.scatter(ax=ax,
+                                 x=x, y=y,
+                                 label=val,
+                                 color='C{}'.format(i),
+                                 alpha=.5)
+
+    plt.legend(loc='best')
+    title = plt.title('{}: {} vs. {}'.format(class_col, 
+                                             y, x))
 
 
 def center_scale_plot(series, center_func, scale_func):
