@@ -1,5 +1,27 @@
 import matplotlib.pyplot as plt
 
+def classs_across_feature(table, class_col, feature):
+    classes = table[class_col].unique()
+
+    ax = table[table[class_col] == classes[0]
+              ].plot.scatter(figsize=(11, 8),
+                        x=feature,
+                        y=class_col,
+                        label=classes[0])
+
+    for i, val in enumerate(classes[1:], 1):
+        table[table[class_col] == val
+                  ].plot.scatter(ax=ax,
+                                  x=feature,
+                                  y=class_col,
+                                  label=val,
+                                  color='C{}'.format(i))
+    plt.yticks([classes[0], classes[-1]])
+    plt.legend(loc='best')
+    title = plt.title('{}: by {}'.format(class_col, feature))
+
+
+
 def center_scale_plot(series, center_func, scale_func):
     # create figure and get max dimensions
     plt.figure()
