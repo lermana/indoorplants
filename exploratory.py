@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-def classs_across_feature(table, class_col, feature):
+def classes_across_feature(table, class_col, feature):
     classes = table[class_col].unique()
 
     ax = table[table[class_col] == classes[0]
