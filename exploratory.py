@@ -32,16 +32,11 @@ def _get_hist(series, bins=None, **kwargs):
 def feature_hist_by_class(table, class_col, feature, bins=None, 
                           figsize=(11, 8), **kwargs):
     """plot histogram of feature, with data color-coded by class"""
-    classes = table[class_col].unique()
-    ax = _get_hist(table.loc[table[class_col] == classes[0], 
-                             feature], 
-                   bins=bins, label=str(classes[0]), 
-                   alpha=.5, figsize=figsize, **kwargs)
-
-    for i, val in enumerate(classes[1:], 1):
-        _get_hist(table.loc[table[class_col] == val, feature],
-                  ax=ax, alpha=.5, label=str(val), bins=bins,
-                  color='C{}'.format(i), **kwargs)
+    table.groupby([class_col, feature]
+                 ).size(
+                 ).unstack(0
+                 ).plot.bar(stacked=True, figsize=figsize, 
+                            alpha=.5, **kwargs)
 
     plt.legend(loc='best')
     title = plt.title('{} histogram, across {}'.format(class_col, 
