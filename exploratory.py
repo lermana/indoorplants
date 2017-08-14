@@ -1,53 +1,105 @@
 import matplotlib.pyplot as plt
+import scipy.stats as sp
+
+def qq_plot(series, figsize=(11, 8)):
+    """compare given series to Normal distirbution
+    with matching location & scale"""
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    arrs, res = sp.probplot(series, 
+                            dist=sp.norm, 
+                            sparams=(series.mean(), series.std()), 
+                            plot=ax)
+    bbox = {'fc': '1', 'pad': 3}
+    xy = (ax.get_xticks()[-2], ax.get_yticks()[2])
+    text = ax.annotate(r'$R^2$: {}'.format(round(res[2], 3)),
+                     xy=xy,
+                     bbox=bbox)
 
 
-def classes_across_feature(table, class_col, feature):
+def _get_hist(series, bins=None, **kwargs):
+    """helper function that handles both categorical and 
+    numeric data"""
+    if series.dtype in (int, float):
+        if bins is None:
+            bins = min(int(round(series.nunique(), -2) / 10), 100)
+        return series.hist(bins=bins, **kwargs)
+    else:
+        return series.value_counts().sort_index(
+                        ).plot.bar(**kwargs)
+
+
+def feature_hist_by_class(table, class_col, feature, bins=None, 
+                          figsize=(11, 8), **kwargs):
+    """plot histogram of feature, with data color-coded by class"""
     classes = table[class_col].unique()
-
-    ax = table[table[class_col] == classes[0]
-              ].plot.scatter(figsize=(11, 8),
-                        x=feature,
-                        y=class_col,
-                        label=classes[0])
+    ax = _get_hist(table.loc[table[class_col] == classes[0], 
+                             feature], 
+                   bins=bins, label=str(classes[0]), 
+                   alpha=.5, figsize=figsize, **kwargs)
 
     for i, val in enumerate(classes[1:], 1):
-        table[table[class_col] == val
-                  ].plot.scatter(ax=ax,
-                                  x=feature,
-                                  y=class_col,
-                                  label=val,
-                                  color='C{}'.format(i))
+        _get_hist(table.loc[table[class_col] == val, feature],
+                  ax=ax, alpha=.5, label=str(val), bins=bins,
+                  color='C{}'.format(i), **kwargs)
+
+    plt.legend(loc='best')
+    title = plt.title('{} histogram, across {}'.format(class_col, 
+                                                       feature))
+
+
+def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
+    """scatter feature against class"""
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+
+    classes = table[class_col].unique()
+    filtered = table.loc[table[class_col] == classes[0], :]
+    ax.scatter(x=filtered[feature], y=filtered[class_col], label=classes[0])
+
+    for i, val in enumerate(classes[1:], 1):
+        filtered = table.loc[table[class_col] == val, :]
+        ax.scatter(x=filtered[feature],y=filtered[class_col],
+                  label=val, color='C{}'.format(i))
+
     plt.yticks([classes[0], classes[-1]])
     plt.legend(loc='best')
     title = plt.title('{}: by {}'.format(class_col, feature))
 
 
-def scatter_by_class(table, class_col, x, y):
-    classes = table[class_col].unique()
+def scatter_by_class(table, class_col, x, y, figsize=(11, 8)):
+    """scatter two features, color code by class"""
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
 
-    ax = table[table[class_col] == classes[0]
-              ].plot.scatter(figsize=(11, 8),
-                             x=x, y=y,
-                             label=classes[0])
+    classes = table[class_col].unique()
+    filtered = table.loc[table[class_col] == classes[0], :]
+    ax.scatter(x=filtered[x], y=filtered[y], alpha=.5, label=classes[0])
 
     for i, val in enumerate(classes[1:], 1):
-        table[table[class_col] == val
-                  ].plot.scatter(ax=ax,
-                                 x=x, y=y,
-                                 label=val,
-                                 color='C{}'.format(i),
-                                 alpha=.5)
+        filtered = table.loc[table[class_col] == val, :]
+        ax.scatter(x=filtered[x], y=filtered[y], alpha=.5, label=val,
+                   color='C{}'.format(i))
 
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
     plt.legend(loc='best')
-    title = plt.title('{}: {} vs. {}'.format(class_col, 
-                                             y, x))
+    title = plt.title('{}: {} vs. {}'.format(class_col, y, x))
 
 
-def center_scale_plot(series, center_func, scale_func):
-    # create figure and get max dimensions
+def center_scale_plot(series, center_func, scale_func, bins=None,
+                      figsize=(11, 8)):
+    """produce histogram overlayed with bands corresponding to
+    units of scale from the center. user supplies center and 
+    scale functions"""
+    
+    # create figure, plot hist, and get max dimensions
     plt.figure()
-    num_bins = min(int(round(series.nunique(), -2) / 10), 100)
-    ax = series.hist(figsize=(11, 8), bins=num_bins)
+    if bins is None:
+        bins = min(int(round(series.nunique(), -2) / 10), 100)
+
+    ax = series.hist(figsize=figsize, bins=bins)
+
     ymaxtick = ax.get_yticks()[-1]
     xmaxtick = ax.get_xticks()[-1]
     

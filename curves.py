@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 
 def _plot_learning(func):
+    """wrapper to plot CV results as learning curve""" 
     def plot(*args, **kwargs):
         results = func(*args, **kwargs)
 
@@ -48,6 +49,11 @@ def _plot_learning(func):
 @_plot_learning
 def learning_curve(model_func, model_params=None, score=None, cv=5,
                    X=None, y=None, bal_inds=None):
+    """*still debugging*: function may have issues.
+
+    helper func that wraps sklearn's learning curve function.
+    allows for multiple rounds of CV (each done cv times) due to 
+    class-balanced resampling or the typlical cv-fold CV."""
     
     get_results = lambda X, y: skl.learning_curve(
         model, X, y,cv=cv, scoring=score)
@@ -81,7 +87,7 @@ def learning_curve(model_func, model_params=None, score=None, cv=5,
 def validation_curve(model_func, X, y, param_name, 
                      param_range, cv=5, score=None,
                      semilog=False, other_params=None):
-    
+    """wraps sklearn's validation curve"""
     if other_params is not None:
         model = model_func(**other_params)
     else:

@@ -7,7 +7,9 @@ from sklearn.metrics import confusion_matrix
 
 def _train_and_score(model=None, score_funcs=None, train_scores=True,
                      X_train=None, y_train=None, X_test=None, y_test=None):
-    
+    """trains model to training data, outputs score(test data) for each
+    score and score_funcs, and does the same for train data unless 
+    train_data is set to False"""
     model = model.fit(X_train, y_train)
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
@@ -21,40 +23,45 @@ def _train_and_score(model=None, score_funcs=None, train_scores=True,
 
 def _cv_engine(X=None, y=None, model=None, score_funcs=None, 
                splits=5, scale_obj=None, train_scores=True):
+    """splits data (based on whether model is classifier
+    or regressor) and passes each fold to the train_and_score
+    function. collects results and returns as list"""
+    if model._estimator_type == 'classifier':
+        skf = StratifiedKFold(n_splits=splits,
+                              random_state=0)
+    elif model._estimator_type == 'regressor':
+        skf = KFold(n_splits=splits,
+                    suffle=True,
+                    random_state=0)
+    else:
+        raise TypeError('Improper model type.')
 
-        if model._estimator_type == 'classifier':
-            skf = StratifiedKFold(n_splits=splits,
-                                  random_state=0)
-        elif model._estimator_type == 'regressor':
-            skf = KFold(n_splits=splits,
-                        suffle=True,
-                        random_state=0)
-        else:
-            raise TypeError('Improper model type.')
-
-        results = []
-        for train, test in skf.split(X, y):
-            
-            if scale_obj is not None:
-                X_train = scale_obj().fit_transform(X.iloc[train, :])
-                X_test = scale_obj().fit_transform(X.iloc[test, :])
-            else:
-                X_train = X.iloc[train, :]
-                X_test = X.iloc[test, :]
-                
-            y_train = y.iloc[train]
-            y_test = y.iloc[test]
-            
-            results.append(_train_and_score(model=model, 
-                score_funcs=score_funcs, train_scores=train_scores,
-                X_train=X_train, y_train=y_train, X_test=X_test, 
-                y_test=y_test))
+    results = []
+    for train, test in skf.split(X, y):
         
-        return results
+        if scale_obj is not None:
+            X_train = scale_obj().fit_transform(X.iloc[train, :])
+            X_test = scale_obj().fit_transform(X.iloc[test, :])
+        else:
+            X_train = X.iloc[train, :]
+            X_test = X.iloc[test, :]
+            
+        y_train = y.iloc[train]
+        y_test = y.iloc[test]
+        
+        results.append(_train_and_score(model=model, 
+            score_funcs=score_funcs, train_scores=train_scores,
+            X_train=X_train, y_train=y_train, X_test=X_test, 
+            y_test=y_test))
+    
+    return results
 
 
 def _cv_format(X=None, y=None, model=None, score_funcs=None, 
          splits=5, scale_obj=None, train_scores=True):
+    """gets results from _cv_engine and returns as 
+    unaggregated DataFrame, where trial number & score 
+    function used are represented in index"""
     res = _cv_engine(model=model, score_funcs=score_funcs, 
                      train_scores=train_scores, X=X, y=y, 
                      splits=splits, scale_obj=scale_obj)
@@ -75,6 +82,9 @@ def _cv_format(X=None, y=None, model=None, score_funcs=None,
 
 
 def _cv_score(results):
+    """given DF of CV results, returns DF of descriptive 
+    statistics. which scores are passed is not currently
+    controlled by user but should be"""
     return results.mean().rename('mean').to_frame(
             ).join(results.std().rename('std').to_frame()
             ).join(results.skew().rename('skew').to_frame()
@@ -84,18 +94,20 @@ def _cv_score(results):
 
 
 def cv_score(**kwargs):
+    """high level user function. key-word args should be 
+    visible to users; this will be changed"""
     return _cv_score(_cv_format(**kwargs))
 
 
 def cv_conf_mat(X=None, y=None, model=None, splits=5, 
                scale_obj=None):
-    
+    """return confusion matrix for each CV trial"""
     results = _cv_engine(X=X, y=y, model=model, 
                         score_funcs=[confusion_matrix], 
                         splits=splits, scale_obj=scale_obj, 
                         train_scores=False)
     
-    results = [pd.concat({i + 1: pd.DataFrame(trial[0],
+    results = [pd.concat({i: pd.DataFrame(trial[0],
                             index=['neg_true', 'pos_true'],
                             columns=['neg_pred', 'pos_pred'])}) 
                    for i, trial in enumerate(results, 1)]

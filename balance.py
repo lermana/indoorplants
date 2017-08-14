@@ -5,6 +5,11 @@ import evaluation
 
 
 def balance_binary_classes(y):
+    """passed a Pandas Series class column, returns List
+    of balanced indices, with each set of indices providing
+    a roughly 50/50 mix of positive & negative class instances.
+    length of list is determined by ratio of major (more 
+    prevalent) to minor (less prevalent) class instances"""
     val_counts = y.value_counts()
     get_counts = lambda _: val_counts[_]
     
@@ -36,6 +41,9 @@ def balance_binary_classes(y):
 def _cv_format(table=None, bal_inds=None, X_cols=None, 
                y_cols=None, model=None, score_funcs=None, 
                splits=5, scale_obj=None, train_scores=True):
+    """return DF of descriptive statistics on cross-validation 
+    results across all sets of balanced indices, where each set 
+    of indices has its own splits-fold CV performed"""
     i, num, results = 0, len(bal_inds), []
     while i < num:
         df = table[table.index.isin(bal_inds[i])]
@@ -50,12 +58,16 @@ def _cv_format(table=None, bal_inds=None, X_cols=None,
 
 
 def cv_score(**kwargs):
+    """high-level wrapper for balanced cross-validation functions.
+    kwargs should be exposed to user"""
     return evaluation._cv_score(_cv_format(**kwargs))
 
 
 def cv_conf_mat(table=None, bal_inds=None, X_cols=None, 
                 y_cols=None, model=None, splits=5, 
                 scale_obj=None):
+    """returns confusion matrix for each CV trial for each 
+    index set"""
     i, num, results = 0, len(bal_inds), []
     while i < num:
         df = table[table.index.isin(bal_inds[i])]
