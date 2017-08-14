@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import scipy.stats as sp
 
+
 def qq_plot(series, figsize=(11, 8)):
     """compare given series to Normal distirbution
     with matching location & scale"""
@@ -17,18 +18,6 @@ def qq_plot(series, figsize=(11, 8)):
                      bbox=bbox)
 
 
-def _get_hist(series, bins=None, **kwargs):
-    """helper function that handles both categorical and 
-    numeric data"""
-    if series.dtype in (int, float):
-        if bins is None:
-            bins = min(int(round(series.nunique(), -2) / 10), 100)
-        return series.hist(bins=bins, **kwargs)
-    else:
-        return series.value_counts().sort_index(
-                        ).plot.bar(**kwargs)
-
-
 def feature_hist_by_class(table, class_col, feature, bins=None, 
                           figsize=(11, 8), **kwargs):
     """plot histogram of feature, with data color-coded by class"""
@@ -37,7 +26,7 @@ def feature_hist_by_class(table, class_col, feature, bins=None,
                  ).unstack(0
                  ).plot.bar(stacked=True, figsize=figsize, 
                             alpha=.5, **kwargs)
-
+    
     plt.legend(loc='best')
     title = plt.title('{} histogram, across {}'.format(class_col, 
                                                        feature))
