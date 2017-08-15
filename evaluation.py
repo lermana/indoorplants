@@ -5,11 +5,11 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import confusion_matrix
 
 
-def _train_and_score(model=None, score_funcs=None, train_scores=True,
-                     X_train=None, y_train=None, X_test=None, y_test=None):
-    """trains model to training data, outputs score(test data) for each
-    score and score_funcs, and does the same for train data unless 
-    train_data is set to False"""
+def _train_and_score(model, score_funcs, X_train, y_train,
+                     X_test, y_test, train_scores=True):
+    """Trains model to training data, outputs score(test data) 
+    for each score in 'score_funcs', and does the same for 
+    train data unless 'train_data' is set to False"""
     model = model.fit(X_train, y_train)
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
@@ -21,11 +21,13 @@ def _train_and_score(model=None, score_funcs=None, train_scores=True,
             for score_func in score_funcs]
 
 
-def _cv_engine(X=None, y=None, model=None, score_funcs=None, 
-               splits=5, scale_obj=None, train_scores=True):
-    """splits data (based on whether model is classifier
+def _cv_engine(X, y, model, score_funcs, splits=5,
+               scale_obj=None, train_scores=True):
+    """Splits data (based on whether model is classifier
     or regressor) and passes each fold to the train_and_score
-    function. collects results and returns as list"""
+    function. 
+
+    Collects results and returns results as List."""
     if model._estimator_type == 'classifier':
         skf = StratifiedKFold(n_splits=splits,
                               random_state=0)
@@ -49,22 +51,20 @@ def _cv_engine(X=None, y=None, model=None, score_funcs=None,
         y_train = y.iloc[train]
         y_test = y.iloc[test]
         
-        results.append(_train_and_score(model=model, 
-            score_funcs=score_funcs, train_scores=train_scores,
-            X_train=X_train, y_train=y_train, X_test=X_test, 
-            y_test=y_test))
-    
+        results.append(_train_and_score(model, score_funcs, 
+                                        X_train, y_train,
+                                        X_test, y_test, 
+                                        train_scores))
     return results
 
 
-def _cv_format(X=None, y=None, model=None, score_funcs=None, 
-         splits=5, scale_obj=None, train_scores=True):
-    """gets results from _cv_engine and returns as 
+def _cv_format(X, y, model, score_funcs, splits=5,
+               scale_obj=None, train_scores=True):
+    """Gets results from _cv_engine and returns as 
     unaggregated DataFrame, where trial number & score 
-    function used are represented in index"""
-    res = _cv_engine(model=model, score_funcs=score_funcs, 
-                     train_scores=train_scores, X=X, y=y, 
-                     splits=splits, scale_obj=scale_obj)
+    function used are represented in index."""
+    res = _cv_engine(X, y, model, score_funcs, splits,
+                     scale_obj, train_scores)
     if train_scores is False:
         cols = [_.__name__ for _ in score_funcs]
         return pd.DataFrame(res, columns=cols)
@@ -93,14 +93,24 @@ def _cv_score(results):
             ).join(results.max().rename('max').to_frame())
 
 
-def cv_score(**kwargs):
-    """high level user function. key-word args should be 
-    visible to users; this will be changed"""
-    return _cv_score(_cv_format(**kwargs))
+def cv_score(X, y, model, score_funcs, splits=5,
+             scale_obj=None, train_scores=True):
+    """returns DataFrame of stats on 'model' 
+    cross-validated over 'splits' splits of data,
+    using scores in 'score_funcs', which must be 
+    an interable. 
+
+    if 'scale_obj' is passed, X will be scaled within
+    each fold so as to prevent data leakage.
+
+    'train_scores' [default True] specifies reporting 
+    on train scores."""
+    return _cv_score(_cv_format(X, y, model, score_funcs, 
+                                splits, scale_obj, 
+                                train_scores))
 
 
-def cv_conf_mat(X=None, y=None, model=None, splits=5, 
-               scale_obj=None):
+def cv_conf_mat(X, y, model, splits=5, scale_obj=None):
     """return confusion matrix for each CV trial"""
     results = _cv_engine(X=X, y=y, model=model, 
                         score_funcs=[confusion_matrix], 

@@ -5,11 +5,12 @@ import evaluation
 
 
 def balance_binary_classes(y):
-    """passed a Pandas Series class column, returns List
+    """Passed a Pandas Series class column, returns List
     of balanced indices, with each set of indices providing
     a roughly 50/50 mix of positive & negative class instances.
-    length of list is determined by ratio of major (more 
-    prevalent) to minor (less prevalent) class instances"""
+    
+    Length of list is determined by ratio of major (more 
+    prevalent) to minor (less prevalent) class instances."""
     val_counts = y.value_counts()
     get_counts = lambda _: val_counts[_]
     
@@ -38,43 +39,53 @@ def balance_binary_classes(y):
     return bal_inds
 
 
-def _cv_format(table=None, bal_inds=None, X_cols=None, 
-               y_cols=None, model=None, score_funcs=None, 
-               splits=5, scale_obj=None, train_scores=True):
-    """return DF of descriptive statistics on cross-validation 
-    results across all sets of balanced indices, where each set 
-    of indices has its own splits-fold CV performed"""
+def _cv_format(X, y, model, bal_inds, score_funcs, 
+              splits=5, scale_obj=None, train_scores=True):
+    """Return DataFrame of scores in 'score_funcs' for each fold
+    of cross validation across all sets of balanced indices, 
+    where each set of indices has its own splits-fold CV 
+    performed."""
     i, num, results = 0, len(bal_inds), []
     while i < num:
-        df = table[table.index.isin(bal_inds[i])]
         results.append(
             pd.concat({i + 1: 
-                evaluation._cv_format(X=df[X_cols], y=df[y_cols],
-                               model=model, score_funcs=score_funcs, 
-                               splits=splits, scale_obj=scale_obj,
-                               train_scores=train_scores)}))
+                evaluation._cv_format(X.loc[bal_inds[i], :], 
+                                      y.loc[bal_inds[i]], 
+                                      model, score_funcs, 
+                                      splits, scale_obj, 
+                                      train_scores)}))
         i += 1
     return pd.concat(results)
 
 
-def cv_score(**kwargs):
-    """high-level wrapper for balanced cross-validation functions.
-    kwargs should be exposed to user"""
-    return evaluation._cv_score(_cv_format(**kwargs))
+def cv_score(X, y, model, bal_inds, score_funcs, 
+             splits=5, scale_obj=None, train_scores=True):
+    """For each set of indices in bal_inds, performs
+    'splits'-fold cross validation of 'model' and calculates each 
+    score passed in 'score_funcs', returning descriptive
+    statistics (calculated across all trials for all indices)
+    are then returned as a DataFrame.
+
+    If 'scale_obj' is passed, 'X' will be scaled within
+    each fold so as to prevent data leakage.
+
+    'train_scores' [default True] specifies reporting 
+    on train scores."""
+    return evaluation._cv_score(_cv_format(X, y, model, bal_inds, 
+                                           score_funcs, splits, 
+                                           scale_obj, train_scores))
 
 
-def cv_conf_mat(table=None, bal_inds=None, X_cols=None, 
-                y_cols=None, model=None, splits=5, 
-                scale_obj=None):
-    """returns confusion matrix for each CV trial for each 
-    index set"""
+def cv_conf_mat(X, y, model, bal_inds, splits=5, 
+                scale_obj=None,):
+    """Returns confusion matrix for each cross validation
+    trial for each index set."""
     i, num, results = 0, len(bal_inds), []
     while i < num:
         df = table[table.index.isin(bal_inds[i])]
         results.append(
             pd.concat({i + 1: 
-                evaluation.cv_conf_mat(X=df[X_cols], y=df[y_cols],
-                               model=model, splits=splits, 
-                               scale_obj=scale_obj)}))
+                evaluation.cv_conf_mat(df[X_cols], df[y_cols],
+                                       model, splits, scale_obj)}))
         i += 1
     return pd.concat(results)
