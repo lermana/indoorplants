@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 from functools import partial, update_wrapper
 
-import evaluation
-import balance
+import validation
 
 
 def _score_prob_as_class(t, func):
@@ -34,26 +33,21 @@ def _convert_score_funcs(t, score_funcs):
     return new_funcs
 
 
-def cv_score(X, y, model, score_funcs, thresholds, 
-             splits=5, bal_inds=None, train_scores=True, 
-             scale_obj=None):
+def cv_score(X, y, model_obj, score_funcs, thresholds, 
+             splits=5, train_scores=True, scale_obj=None):
     """Performs cross validation of passed 'model' for the
     different decision boundaries passed in 'thresholds',
     which must be an iterable.
 
-    Returns balance.cv_score if 'bal_inds' else 
-    evaluation.cv_score. Please see these functions' docs 
-    for more information on other arguments."""
-    model.predict = model.predict_proba
-    if bal_inds is None: cv_func = evaluation.cv_score
-    else: cv_func = partial(balance.cv_score, 
-                            bal_inds=bal_inds)
-
+    Returns validation.cv_score. Please see this function's 
+    docs for more information on other arguments."""
+    model_obj.predict = model_obj.predict_proba
     results = {}
     for t in thresholds:
         scores = _convert_score_funcs(t, score_funcs)
-        kwargs = {'X':X, 'y':y, 'model':model, 'splits':splits,
-                  'scale_obj':scale_obj, 'score_funcs':scores}
-        results[t] = cv_func(**kwargs)
+        kwargs = {'X':X, 'y':y, 'model_obj':model_obj, 
+        		  'splits':splits, 'scale_obj':scale_obj, 
+        		  'score_funcs':scores, 'train_scores': False}
+        results[t] = validation.cv_score(**kwargs)
 
     return pd.concat(results)

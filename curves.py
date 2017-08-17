@@ -1,155 +1,219 @@
 import numpy as np
+import pandas as pd
+
+from sklearn.metrics import precision_score, recall_score
+
 import sklearn.model_selection as skl
 import matplotlib.pyplot as plt
 
+import validation
+import boundaries
 
 
-def _plot_learning(func):
-    """wrapper to plot CV results as learning curve""" 
-    def plot(*args, **kwargs):
-        results = func(*args, **kwargs)
+def _validate_param_range(model_type, param_name, param_range,
+                          X, y, score_funcs, other_params={},
+                          splits=5, scale_obj=None, train_scores=True):
+    """Returns validation.cv_score across values in 'param_range'
+    for 'param_name', which should be a working parameter for the
+    passed model.
 
-        train_sizes = results['train_sizes']
-        train_scores = results['train_scores']
-        test_scores = results['test_scores']
-        model_name = results['model_name']
-        score = results['score']
+    'model_type' should be an uninstantiated sklearn model (or
+    one with similar fit and predict methods). Additional 
+    hyper-parameters (i.e. not 'param_name' should be passed
+    in to 'other_params' as dictionary.
 
-        train_scores_mean = np.mean(train_scores, axis=1)
-        train_scores_std = np.std(train_scores, axis=1)
-        test_scores_mean = np.mean(test_scores, axis=1)
-        test_scores_std = np.std(test_scores, axis=1)
-
-        plt.figure(figsize=(11, 8))
-        plt.xlabel("train size")
-        plt.ylabel(score)
-        title = plt.title('Learning Curve: {}'.format(
-                                        model_name))
-
-        plt.plot(train_sizes, train_scores_mean, 
-                 color="crimson", label="train", lw=2)
-
-        plt.fill_between(train_sizes, 
-                         train_scores_mean - train_scores_std,
-                         train_scores_mean + train_scores_std, 
-                         alpha=0.1, color="crimson", lw=2)
-
-        plt.plot(train_sizes, test_scores_mean, 
-                 color="teal", label="validation", lw=2)
-
-        plt.fill_between(train_sizes, 
-                         test_scores_mean - test_scores_std,
-                         test_scores_mean + test_scores_std, 
-                         alpha=0.1, color="teal", lw=2)
-
-        plt.legend(loc="best")
-    return plot
-
-
-@_plot_learning
-def learning_curve(model_func, model_params=None, score=None, 
-                   X=None, y=None, bal_inds=None, cv=5):
-    """*still debugging*: function may have issues.
-
-    helper func that wraps sklearn's learning curve function.
-    allows for multiple rounds of CV (each done cv times) due to 
-    class-balanced resampling or the typlical cv-fold CV."""
-    
-    get_results = lambda X, y: skl.learning_curve(
-        model, X, y,cv=cv, scoring=score)
+    Please see validation.cv_score for details on other args.""" 
     results = {}
+    for val in param_range:
+        model_obj = model_type(**{param_name:val}, **other_params)
+        
+        kwargs = {'model_obj': model_obj, 'X': X, 'y': y, 
+                  'splits': splits, 'scale_obj': scale_obj, 
+                  'train_scores': train_scores, 
+                  'score_funcs': score_funcs}
+        try:
+            _ = val / 1
+        except TypeError:
+            val = str(val)
+        results[val] = validation._cv_format(**kwargs)
+    return pd.concat(results)
 
-    if model_params is not None: 
-        model = model_func(**model_params)
-    else: 
-        model = model_func()
+
+def validation_curve(X, y, score, model_type, param_name, 
+                     param_range, other_params={}, splits=5, 
+                     scale_obj=None, semilog=False, figsize=(11, 8)):
+    """Cross validates 'model_type' across passed parameters and
+    plots results. Please see _validate_param_range for more
+    details around the cross validation arguments.
     
-    if bal_inds is not None:
-        X_, y_ = X[X.index.isin(bal_inds[0])
-                    ], y[y.index.isin(bal_inds[0])]
-        train_sizes, train_scores, test_scores = get_results(X_, y_)
-        i, num = 1, len(bal_inds)
-        while i < num:
-            X_, y_ = X[X.index.isin(bal_inds[i])
-                    ], y[y.index.isin(bal_inds[i])]
-            _, train_, test_ = get_results(X_, y_)
-            train_scores = np.append(train_scores, train_, axis=1)
-            test_scores = np.append(test_scores, test_, axis=1)
-            i += 1
-    else:
-        train_sizes, train_scores, test_scores = get_results(X, y)
+    Pass True for 'semilog' if 'param_range' values would be better
+    visualized with log scaling. Pass tuple to 'figsize' if you 
+    wish to override default of (11, 8)."""
 
-    results['train_sizes'] = train_sizes
-    results['train_scores'] = train_scores
-    results['test_scores'] = test_scores
-    results['model_name'] = model_func.__name__
-    results['score'] = score
-    return results
+    results = _validate_param_range(model_type, param_name, 
+                                    param_range, X, y, [score], 
+                                    other_params, splits, scale_obj)
     
+    means = results.groupby(results.index.get_level_values(0)
+                            ).mean().reset_index()
+    stds = results.groupby(results.index.get_level_values(0)
+                          ).std().reset_index()
 
-def validation_curve(model_func, X, y, param_name, param_range, 
-                     cv=5, score=None, semilog=False, 
-                     other_params=None, bal_inds=None):
-    """wraps skl validation curve; provides functionality
-    for class-balanced analysis"""
-    get_results = lambda X, y: skl.validation_curve(model, 
-                X, y, param_name=param_name, cv=cv,
-                param_range=param_range, scoring=score)
-    results = {}
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    xtick = ax.set_xticks(means.index)
 
-    if other_params is not None: 
-        model = model_func(**other_params)
-    else: 
-        model = model_func()
-    
-    if bal_inds is not None:
-        X_, y_ = X[X.index.isin(bal_inds[0])
-                    ], y[y.index.isin(bal_inds[0])]
-        train_scores, test_scores = get_results(X_, y_)
-        i, num = 1, len(bal_inds)
-        while i < num:
-            X_, y_ = X[X.index.isin(bal_inds[i])
-                        ], y[y.index.isin(bal_inds[i])]
-            train_, test_ = get_results(X_, y_)
-            train_scores = np.append(train_scores, train_, axis=1)
-            test_scores = np.append(test_scores, test_, axis=1)
-            i += 1
-    else:
-        train_scores, test_scores = get_results(X, y)
+    if semilog is True: plt_func = plt.semilogx
+    else: plt_func = plt.plot
+    plt_func(means.index, means[(score.__name__, 'train')
+                                ].values, 
+             label='train', color='darkorange', lw=2)
+    plt_func(means.index, means[(score.__name__, 'test')
+                                ].values, 
+             label='validation', color="navy", lw=2)
 
-    train_scores_mean = np.mean(train_scores, axis=1)
-    train_scores_std = np.std(train_scores, axis=1)
-    test_scores_mean = np.mean(test_scores, axis=1)
-    test_scores_std = np.std(test_scores, axis=1)
-    
-    plt.figure(figsize=(11, 8))
-    title = plt.title('Validation Curve: {}, across {}'.format(
-                      model_func.__name__, param_name))
-
-    xlab = plt.xlabel(param_name)
-    ylab = plt.ylabel(score)
-    plt.ylim(0.0, 1.1)
-    
-    if semilog is True:
-        plt.semilogx(param_range, train_scores_mean, 
-                     label="train", color="darkorange", lw=2)
-    else:
-        plt.plot(param_range, train_scores_mean, 
-                 label="train", color="darkorange", lw=2)
-    plt.fill_between(param_range, 
-                     train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, 
+    bands = lambda _: (means[(score.__name__, _)]
+                        - stds[(score.__name__, _)],
+                       means[(score.__name__, _)]
+                        + stds[(score.__name__, _)])
+    plt.fill_between(means.index, *bands('train'), 
                      alpha=0.1, color="darkorange", lw=2)
-    
-    if semilog is True:
-        plt.semilogx(param_range, test_scores_mean, 
-                     label="validation", color="navy", lw=2)
-    else:
-        plt.plot(param_range, test_scores_mean, 
-                 label="validation", color="navy", lw=2)
-    plt.fill_between(param_range, 
-                     test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, 
+    plt.fill_between(means.index, *bands('test'), 
                      alpha=0.1, color="navy", lw=2)
 
+    xlab = ax.set_xlabel(param_name)
+    xlab = ax.set_xticklabels(means['index'].values)
+    ylab = ax.set_ylabel(score.__name__)
+    title = plt.title('Validation curve: {}, across {}'.format(
+                      model_type.__name__, param_name))
     plt.legend(loc="best")
+
+
+def _validate_train_sizes(X, y, model_obj, score_funcs,  
+                         scale_obj=None, splits=5,
+                         train_sizes=[0.1, 0.33, 0.55, 0.78, 1.]):
+    """Returns validation.cv_score for 
+    for 'param_name', which should be a working parameter for the
+    passed model.
+
+    'model_type' should be an uninstantiated sklearn model (or
+    one with similar fit and predict methods). Additional 
+    hyper-parameters (i.e. not 'param_name' should be passed
+    in to 'other_params' as dictionary.
+
+    Please see validation.cv_score for details on other args.""" 
+    val_counts = y.value_counts()
+    get_counts = lambda _: val_counts[_]
+    
+    cnt_by_cnt = {get_counts(_): _ for _ in (0, 1)}
+    cnt_by_cls = {_: get_counts(_) for _ in (0, 1)}
+    
+    major = cnt_by_cnt[max(cnt_by_cnt)]
+    minor = cnt_by_cnt[min(cnt_by_cnt)]
+    
+    ratio = cnt_by_cls[minor] / len(y)
+    results = {}
+    for val in train_sizes:
+        size = int(np.floor(len(y) * val))
+        min_size = int(np.floor(size * ratio))
+        maj_size = size - min_size
+    
+        y_sized = y[y==major].sample(maj_size
+                    ).append(y[y==minor].sample(min_size))
+        X_sized = X.loc[y_sized.index, :]
+
+        kwargs = {'model_obj': model_obj, 'X': X_sized, 
+                  'y': y_sized, 'splits': splits, 
+                  'scale_obj': scale_obj, 
+                  'train_scores': True, 
+                  'score_funcs': score_funcs}
+        
+        results[str(val)] = validation._cv_format(**kwargs)
+    return pd.concat(results)
+
+
+def learning_curve(X, y, model_type, score, scale_obj=None, 
+                   splits=5, train_sizes=[0.1, 0.33, 0.55, 0.78, 1.],
+                   model_params={}, figsize=(11, 8)):
+    """Cross validates 'model_type' across passed parameters and
+    plots results. Please see _validate_param_range for more
+    details around the cross validation arguments.
+    
+    Pass True for 'semilog' if 'param_range' values would be better
+    visualized with log scaling. Pass tuple to 'figsize' if you 
+    wish to override default of (11, 8)."""
+    model_obj = model_type(**model_params)
+    results = _validate_train_sizes(X, y, model_obj, [score], 
+                                    scale_obj, splits, train_sizes)
+    
+    means = results.groupby(results.index.get_level_values(0)
+                            ).mean().reset_index()
+    stds = results.groupby(results.index.get_level_values(0)
+                          ).std().reset_index()
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    xtick = ax.set_xticks(means.index)
+
+    plt.plot(means.index, means[(score.__name__, 'train')
+                                ].values, 
+             label='train', color='crimson', lw=2)
+    plt.plot(means.index, means[(score.__name__, 'test')
+                                ].values, 
+             label='validation', color="teal", lw=2)
+
+    bands = lambda _: (means[(score.__name__, _)]
+                        - stds[(score.__name__, _)],
+                       means[(score.__name__, _)]
+                        + stds[(score.__name__, _)])
+
+    plt.fill_between(means.index, *bands('train'), 
+                     alpha=0.1, color="crimson", lw=2)
+    plt.fill_between(means.index, *bands('test'), 
+                     alpha=0.1, color="teal", lw=2)
+
+    xlab = ax.set_xlabel('training size')
+    xlab = means['index'].map(lambda _: int(round(float(_) * len(y), -2)))
+    xlab = ax.set_xticklabels(xlab)
+    ylab = ax.set_ylabel(score.__name__)
+    title = plt.title('Learning curve: {}'.format(
+                                model_type.__name__))
+    plt.legend(loc="best")
+
+
+def precision_recall_curve(X, y, model_type, scale_obj=None, 
+                           splits=5, model_params={}, figsize=(11, 8)):
+    """Plot precision-recall curve over decision boundaries:
+    [0, 1] for binary classification. 
+
+    Pass 'model_type', 'model_params' and 'figsze' in same fashion 
+    as for learning_curve. 'splits' and 'scale_obj' are same as
+    for all cv_score functions. """
+    results = boundaries.cv_score(X, y, model_type(**model_params), 
+                                 [recall_score, precision_score],
+                                 [.1*x for x in range(11)],
+                                 splits, False, scale_obj)
+    to_plot = results.unstack()['mean']
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+
+    plt.plot(to_plot['recall_score'], to_plot['precision_score'], lw=2)
+    plt.fill_between(to_plot['recall_score'], to_plot['precision_score'],
+                     alpha=.2)
+
+    for row in to_plot.itertuples():
+        ax.annotate('{}'.format(round(row[0], 3)),
+                    xy=(row[1], row[2]),
+                    xytext=(row[1] - .01, 
+                            row[2] + .02))
+    plt.xlim([0.0, 1.0])
+    plt.xlabel('Recall')
+    plt.ylim([0.0, 1.0  ])
+    plt.ylabel('Precision')
+    title = plt.title('Precision & recall by decision boundary: {}'.format(
+                                        model_type.__name__))
+
+
+
+
