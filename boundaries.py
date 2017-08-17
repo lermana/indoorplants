@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from functools import partial, update_wrapper
+from sklearn.metrics import confusion_matrix
 
 import validation
 
@@ -47,7 +48,7 @@ def cv_score(X, y, model_obj, score_funcs, thresholds,
         scores = _convert_score_funcs(t, score_funcs)
         kwargs = {'X':X, 'y':y, 'model_obj':model_obj, 
         		  'splits':splits, 'scale_obj':scale_obj, 
-        		  'score_funcs':scores, 'train_scores': False}
+        		  'score_funcs':scores, 
+                  'train_scores': train_scores}
         results[t] = validation.cv_score(**kwargs)
-
     return pd.concat(results)

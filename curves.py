@@ -182,7 +182,8 @@ def learning_curve(X, y, model_type, score, scale_obj=None,
 
 
 def precision_recall_curve(X, y, model_type, scale_obj=None, 
-                           splits=5, model_params={}, figsize=(11, 8)):
+                           splits=5, model_params={}, figsize=(11, 8),
+                           thresholds=[.1*x for x in range(1, 10)]):
     """Plot precision-recall curve over decision boundaries:
     [0, 1] for binary classification. 
 
@@ -191,7 +192,7 @@ def precision_recall_curve(X, y, model_type, scale_obj=None,
     for all cv_score functions. """
     results = boundaries.cv_score(X, y, model_type(**model_params), 
                                  [recall_score, precision_score],
-                                 [.1*x for x in range(11)],
+                                 thresholds,
                                  splits, False, scale_obj)
     to_plot = results.unstack()['mean']
 
@@ -207,9 +208,8 @@ def precision_recall_curve(X, y, model_type, scale_obj=None,
                     xy=(row[1], row[2]),
                     xytext=(row[1] - .01, 
                             row[2] + .02))
-    plt.xlim([0.0, 1.0])
+    
     plt.xlabel('Recall')
-    plt.ylim([0.0, 1.0  ])
     plt.ylabel('Precision')
     title = plt.title('Precision & recall by decision boundary: {}'.format(
                                         model_type.__name__))
