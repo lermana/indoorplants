@@ -52,3 +52,21 @@ def cv_score(X, y, model_obj, score_funcs, thresholds,
                   'train_scores': train_scores}
         results[t] = validation.cv_score(**kwargs)
     return pd.concat(results)
+
+
+def cv_conf_mat(X, y, model_obj, t, splits=3, scale_obj=None):
+    """Returns confusion matrix resulting from 'splits'-fold
+    cross-validation using 't' to determine decision boundary."""
+    model_obj.predict = model_obj.predict_proba
+    scores = _convert_score_funcs(t, [confusion_matrix])
+    
+    results = validation._cv_engine(X=X, y=y, model_obj=model_obj, 
+                                    score_funcs=scores, 
+                                    splits=splits, scale_obj=scale_obj, 
+                                    train_scores=False) 
+    results = [pd.concat({i: pd.DataFrame(trial[0],
+                            index=['neg_true', 'pos_true'],
+                            columns=['neg_pred', 'pos_pred'])}) 
+                   for i, trial in enumerate(results, 1)]
+
+    return pd.concat({t: pd.concat(results)})
