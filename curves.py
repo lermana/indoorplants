@@ -7,6 +7,7 @@ import sklearn.model_selection as skl
 import matplotlib.pyplot as plt
 
 import validation
+import calibration
 import boundaries
 
 
@@ -54,10 +55,8 @@ def validation_curve(X, y, score, model_type, param_name,
                                     param_range, X, y, [score], 
                                     other_params, splits, scale_obj)
     
-    means = results.groupby(results.index.get_level_values(0)
-                            ).mean().reset_index()
-    stds = results.groupby(results.index.get_level_values(0)
-                          ).std().reset_index()
+    means = results.groupby(level=0).mean().reset_index()
+    stds = results.groupby(level=0).std().reset_index()
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
@@ -146,10 +145,8 @@ def learning_curve(X, y, model_type, score, scale_obj=None,
     results = _validate_train_sizes(X, y, model_obj, [score], 
                                     scale_obj, splits, train_sizes)
     
-    means = results.groupby(results.index.get_level_values(0)
-                            ).mean().reset_index()
-    stds = results.groupby(results.index.get_level_values(0)
-                          ).std().reset_index()
+    means = results.groupby(level=0).mean().reset_index()
+    stds = results.groupby(level=0).std().reset_index()
 
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
@@ -179,6 +176,36 @@ def learning_curve(X, y, model_type, score, scale_obj=None,
     title = plt.title('Learning curve: {}'.format(
                                 model_type.__name__))
     plt.legend(loc="best")
+
+
+def calibration_curve(X, y, model_type, scale_obj=None, splits=5, 
+                      model_params={}, figsize=(11, 8)):
+
+    model_obj = model_type(**model_params)
+    results = calibration.cv_calibrate(X, y, model_obj, splits, 
+                                       scale_obj)
+    
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    xtick = ax.set_xticks(results.index)
+
+    plt.plot(results.index, results['mean'], 
+             label='train', color='C5', lw=2)
+
+    bands = lambda _: (_['mean'] - _['std'],
+                       _['mean'] + _['std'])
+
+    plt.fill_between(results.index, *bands(results), 
+                     alpha=0.1, color="C5", lw=2)
+
+    ax.set_xlim(0, 1)
+    xlab = ax.set_xlabel('predicted probability (bin)')
+    ax.set_ylim(0, 1)
+    ylab = ax.set_ylabel('% of data with positive label')
+    title = plt.title('Calibration curve: {}'.format(
+                                model_type.__name__))
+    plt.legend(loc="best")
+
 
 
 def precision_recall_curve(X, y, model_type, scale_obj=None, 
@@ -213,7 +240,3 @@ def precision_recall_curve(X, y, model_type, scale_obj=None,
     plt.ylabel('Precision')
     title = plt.title('Precision & recall by decision boundary: {}'.format(
                                         model_type.__name__))
-
-
-
-
