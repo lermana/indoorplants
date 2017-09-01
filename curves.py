@@ -179,24 +179,33 @@ def learning_curve(X, y, model_type, score, scale_obj=None,
 
 
 def calibration_curve(X, y, model_type, scale_obj=None, splits=5, 
-                      model_params={}, figsize=(11, 8)):
+                      model_params={}, calib_types=None, figsize=(11, 8)):
+    """Plots calibration curves for original model & passed calibrators."""
+    def plot_probs(results, c, label):
+        plt.plot(results.index, results['mean'],
+                 label=label, color=c, lw=2)
+        bands = lambda _: (_['mean'] - _['std'],
+                           _['mean'] + _['std'])
+        plt.fill_between(results.index, *bands(results), 
+                         alpha=0.1, color=c, lw=2)
 
     model_obj = model_type(**model_params)
     results = calibration.cv_calibrate(X, y, model_obj, splits, 
-                                       scale_obj)
-    
+                                       scale_obj, calib_types)
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     xtick = ax.set_xticks(results.index)
+    colors = (c for c in ['C6', 'C4', 'C0'])
 
-    plt.plot(results.index, results['mean'], 
-             label='train', color='C5', lw=2)
+    plot = plot_probs(results.loc[:, 'original_model'], 
+                      colors.__next__(), 
+                      'original_model')
 
-    bands = lambda _: (_['mean'] - _['std'],
-                       _['mean'] + _['std'])
-
-    plt.fill_between(results.index, *bands(results), 
-                     alpha=0.1, color="C5", lw=2)
+    if calib_types is not None:
+        for cal_mod in calib_types:
+            plot = plot_probs(results.loc[:, cal_mod.__name__ + '_cal'], 
+                              colors.__next__(), 
+                              cal_mod.__name__)
 
     ax.set_xlim(0, 1)
     xlab = ax.set_xlabel('predicted probability (bin)')
