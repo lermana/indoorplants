@@ -1,4 +1,4 @@
-# modeling
+# IndoorPlants
 
 #### Note
 
