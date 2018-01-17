@@ -16,6 +16,7 @@ def qq_plot(series, figsize=(11, 8)):
     text = ax.annotate(r'$R^2$: {}'.format(round(res[2], 3)),
                      xy=xy,
                      bbox=bbox)
+    title = ax.set_title('Q-Q plot')
 
 
 def feature_hist_by_class(table, class_col, feature, bins=None, 

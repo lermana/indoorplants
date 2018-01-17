@@ -36,7 +36,7 @@ def _validate_param_range(model_type, param_name, param_range,
             _ = val / 1
         except TypeError:
             val = str(val)
-        results[val] = validation._cv_format(**kwargs)
+        results[val] = crossvalidate._cv_format(**kwargs)
     return pd.concat(results)
 
 
@@ -127,7 +127,7 @@ def _validate_train_sizes(X, y, model_obj, score_funcs,
                   'train_scores': True, 
                   'score_funcs': score_funcs}
         
-        results[str(val)] = validation._cv_format(**kwargs)
+        results[str(val)] = crossvalidate._cv_format(**kwargs)
     return pd.concat(results)
 
 
