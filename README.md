@@ -1,5 +1,7 @@
 # IndoorPlants
 
+(named for the wonderful coffe shop _Tommy_ in Montreal)
+
 #### Note
 
 This repo (including its documentation) is still under construction, but currently available functionality is detailed briefly below. Some example usage can be found in the *census_data_analysis* notebook.
