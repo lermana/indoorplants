@@ -10,10 +10,14 @@ This repo (including its documentation) is still under construction, but current
 
 This *Python* repo provides some data analysis and model evaluation tools to be used with *Pandas* data and *scikit-learn* models. Built using *Python* 3.6, *Pandas* .2, *sklearn* .18 and *Numpy* 1.12
 
-**exploratory.py** provides visualization capabilities for exploratory data analysis purposes.
+**analysis/exploratory.py** provides visualization capabilities for exploratory data analysis purposes.
 
-**validation.py** provides cross-validation functionality.
+**validation/crossvalidate.py** provides cross-validation functionality.
 
-**curves.py** provides curves to be used for ML model evaluation - learning, validation, and precision-recall curves.
+**validation/curves.py** provides curves to be used for ML model evaluation - learning, validation, and precision-recall curves.
 
-**boundaries.py** provides tools for cross validating over different decision boundaries. 
+**validation/boundaries.py** provides tools for cross validating over different decision boundaries. 
+
+#### Installation
+
+After cloning the repo, enter *indoorplants/indoorplants/* and run `pip install -e .`
