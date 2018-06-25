@@ -52,18 +52,18 @@ def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
     title = plt.title('{}: by {}'.format(class_col, feature))
 
 
-def scatter_by_class(table, class_col, x, y, figsize=(11, 8)):
+def scatter_by_class(table, class_col, x, y, figsize=(11, 8), alpha=.5):
     """scatter two features, color code by class"""
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
 
     classes = table[class_col].unique()
     filtered = table.loc[table[class_col] == classes[0], :]
-    ax.scatter(x=filtered[x], y=filtered[y], alpha=.5, label=classes[0])
+    ax.scatter(x=filtered[x], y=filtered[y], alpha=alpha, label=classes[0])
 
     for i, val in enumerate(classes[1:], 1):
         filtered = table.loc[table[class_col] == val, :]
-        ax.scatter(x=filtered[x], y=filtered[y], alpha=.5, label=val,
+        ax.scatter(x=filtered[x], y=filtered[y], alpha=alpha, label=val,
                    color='C{}'.format(i))
 
     ax.set_xlabel(x)
