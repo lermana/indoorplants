@@ -40,7 +40,7 @@ def cv_score(X, y, model_obj, score_funcs, thresholds,
     different decision boundaries passed in 'thresholds',
     which must be an iterable.
 
-    Returns validation.cv_score. Please see this function's 
+    Returns crossvalidate.cv_score. Please see this function's 
     docs for more information on other arguments."""
     model_obj.predict = model_obj.predict_proba
     results = {}
@@ -50,7 +50,7 @@ def cv_score(X, y, model_obj, score_funcs, thresholds,
                   'splits':splits, 'scale_obj':scale_obj, 
                   'score_funcs':scores, 
                   'train_scores': train_scores}
-        results[t] = validation.cv_score(**kwargs)
+        results[t] = crossvalidate.cv_score(**kwargs)
     return pd.concat(results)
 
 
@@ -60,7 +60,7 @@ def cv_conf_mat(X, y, model_obj, t, splits=3, scale_obj=None):
     model_obj.predict = model_obj.predict_proba
     scores = _convert_score_funcs(t, [confusion_matrix])
     
-    results = validation._cv_engine(X=X, y=y, model_obj=model_obj, 
+    results = crossvalidate._cv_engine(X=X, y=y, model_obj=model_obj, 
                                     score_funcs=scores, 
                                     splits=splits, scale_obj=scale_obj, 
                                     train_scores=False) 
