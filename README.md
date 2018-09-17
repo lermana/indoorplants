@@ -14,7 +14,7 @@ This *Python* repo provides some data analysis and model evaluation tools to be 
 
 `validation/crossvalidate.py` provides cross-validation functionality.
 
-`validation/curves.py` provides curves to be used for ML model evaluation - validation, calibration, and precision-recall curves.
+`validation/curves.py` provides curves to be used for ML model evaluation - validation, calibration, and precision-recall.
 
 `validation/boundaries.py` provides tools for cross validating over different decision boundaries. 
 
