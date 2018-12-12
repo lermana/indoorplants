@@ -39,10 +39,10 @@ def feature_hist_by_class_continuous(eda_df, class_, feature):
     """
     fig = plt.figure(figsize=(11, 8))
     ax = fig.add_subplot(111)
-    ax = eda_df[eda_df.class_ == 1
-               ].feature.hist(ax=ax, bins=100, color="orange", alpha=.5)
-    ax = eda_df[eda_df.class_ == 0
-               ].feature.hist(ax=ax, bins=100, color="blue", alpha=.5)
+    ax = eda_df[eda_df[class_] == 1
+               ][feature].hist(ax=ax, bins=100, color="orange", alpha=.5)
+    ax = eda_df[eda_df[class_] == 0
+               ][feature].hist(ax=ax, bins=100, color="blue", alpha=.5)
     l = ax.set_ylabel("count")
     l = ax.set_xlabel("feature")
     t = ax.set_title("hist: feature, by class (orange=1, blue=0)")
