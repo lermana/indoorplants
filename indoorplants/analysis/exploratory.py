@@ -32,6 +32,20 @@ def feature_hist_by_class(table, class_col, feature, bins=None,
     title = plt.title('{} histogram, across {}'.format(class_col, 
                                                        feature))
 
+def feature_hist_by_class_continuous(eda_df, class, feature): 
+    """
+    Plots a histogram of passed feature, broken out by class, which
+    must be of a binary nature.
+    """
+    fig = plt.figure(figsize=(11, 8))
+    ax = fig.add_subplot(111)
+    ax = eda_df[eda_df.class == 1
+               ].feature.hist(ax=ax, bins=100, color="orange", alpha=.5)
+    ax = eda_df[eda_df.class == 0
+               ].feature.hist(ax=ax, bins=100, color="blue", alpha=.5)
+    l = ax.set_ylabel("count")
+    l = ax.set_xlabel("feature")
+    t = ax.set_title("hist: feature, by class (orange=1, blue=0)")
 
 def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
     """scatter feature against class"""
