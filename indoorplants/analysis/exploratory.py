@@ -44,8 +44,8 @@ def feature_hist_by_class_continuous(eda_df, class_, feature):
     ax = eda_df[eda_df[class_] == 0
                ][feature].hist(ax=ax, bins=100, color="blue", alpha=.5)
     l = ax.set_ylabel("count")
-    l = ax.set_xlabel("feature")
-    t = ax.set_title("hist: feature, by class (orange=1, blue=0)")
+    l = ax.set_xlabel(f"{feature}")
+    t = ax.set_title(f"hist: {feature}, by {class_} (orange=1, blue=0)")
 
 def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
     """scatter feature against class"""
