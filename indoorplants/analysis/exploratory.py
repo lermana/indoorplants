@@ -86,6 +86,16 @@ def scatter_by_class(table, class_col, x, y, figsize=(11, 8), alpha=.5):
     title = plt.title('{}: {} vs. {}'.format(class_col, y, x))
 
 
+def box_plot_by_class(eda_df, class_col, feature):
+    
+    ax = eda_df[[f"{feature}", f"{class_col}"]
+              ].pivot(values=f"{feature}", columns=f"{class_col}"
+              ).boxplot(figsize=(11, 8))
+    l= ax.set_xlabel(f"{class_col}")
+    l= ax.set_ylabel(f"{feature}")
+    t = ax.set_title(f"box plot: {feature} by {class_col}")
+
+
 def center_scale_plot(series, center_func, scale_func, bins=None,
                       figsize=(11, 8)):
     """produce histogram overlayed with bands corresponding to
