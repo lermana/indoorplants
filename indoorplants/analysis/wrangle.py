@@ -2,7 +2,7 @@ def get_binary_feature_size_by_class(df, class_, feature):
     """
     Given DataFrame, class column name, and feature column
     name, return what is I think, literally:
-	- pd.crosstab(df.class_, df.feature).stack()
+    - pd.crosstab(df.class_, df.feature).stack()
     Should this be a function then? Probably not. But
     hey, here it is.
 
@@ -13,10 +13,10 @@ def get_binary_feature_size_by_class(df, class_, feature):
         DataFrame on which this function will operate.
 
     class_ : str
-	Column name for the class / target.
+    Column name for the class / target.
 
     feature : str
-	Column name for the feature.
+    Column name for the feature.
     
 
     Return
@@ -45,10 +45,10 @@ def get_class_cnts_by_features_nulls(df, class_, features):
         DataFrame on which this function will operate.
 
     class_ : str
-	Column name for the class / target.
+    Column name for the class / target.
 
     features : iterable
-	Iterable of column names of the feature(s).
+    Iterable of column names of the feature(s).
     
     Return
     ------
@@ -69,3 +69,18 @@ def get_class_cnts_by_features_nulls(df, class_, features):
     _ahh = groupbys[0].join(groupbys[1:]).T.fillna(0)
     _ahh["tf_ratio"] = _ahh[True] / _ahh[False]
     return _ahh.sort_values("tf_ratio")
+
+
+def get_null_stats(df):
+    """I need a docstring"""
+    nulls = df.isnull().sum
+    nulls = nulls.rename("cnt").to_frame()
+    nulls["ratio"] = nulls / len(df)
+    return nulls
+
+
+def remove_cols_over_x_pcnt_null(df, x=.99):
+    """I need a docstring"""
+    nulls = get_null_stats(df)
+    to_remove = nulls[nulls.ratio > x].index
+    return df.drop(to_remove, axis=1)
