@@ -91,10 +91,9 @@ def get_cols_over_x_pcnt_null(df, x=.99):
     return nulls[nulls.ratio > x].index
 
 
-def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None, to_remove=None):
+def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None):
     """I need a docstring"""
-    if not to_remove:
-        to_remove = get_cols_over_x_pcnt_null(df, x=.99)
+    to_remove = get_cols_over_x_pcnt_null(df, x=.99)
 
     if isinstance(exclude, str):
         exclude = [exclude]
@@ -105,11 +104,17 @@ def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None, to_remove=None):
 
 
 def create_is_null_cols(df, null_threshold=.5, remove_originals=False, exclude=None):
-    null_cols = get_cols_over_x_pcnt_null(df, .5)
+    null_cols = get_cols_over_x_pcnt_null(df, null_threshold)
+
+    if exclude is not None:
+        null_cols = list(filter(lambda c: c not in exclude, null_cols))
+
     for col in null_cols:
         df["is_null_" + col] = df[col].isnull()
+
     if remove_originals:
-        df = remove_cols_over_x_pcnt_null(df, null_threshold, exclude=exclude, to_remove=null_cols)
+        df = df.drop(null_cols, axis=1)
+
     return df
 
 
