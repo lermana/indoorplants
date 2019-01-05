@@ -40,7 +40,7 @@ def _cv_engine(X, y, model_obj, score_funcs, splits=5,
 
     results = []
     for train, test in skf.split(X, y):
-        
+
         if scale_obj is not None:
             X_train = scale_obj.fit_transform(X.iloc[train, :])
             X_test = scale_obj.fit_transform(X.iloc[test, :])
@@ -81,33 +81,96 @@ def _cv_format(X, y, model_obj, score_funcs, splits=5,
         return dfs[0].join(dfs[1:])
 
 
-def _cv_score(results):
-    """Given DF of CV results, returns DF of descriptive 
-    statistics. Which stats are returned is not currently
-    controlled by user but should be."""
-    return results.mean().rename('mean').to_frame(
-            ).join(results.std().rename('std').to_frame()
-            ).join(results.skew().rename('skew').to_frame()
-            ).join(results.kurtosis().rename('kurt').to_frame()
-            ).join(results.min().rename('min').to_frame()
-            ).join(results.max().rename('max').to_frame())
+def _cv_score(results, stats_to_run):
+    """
+    Given DF of CV results, returns DF of descriptive statistics.
+
+    parameters
+    ----------
+
+    results: pandas.DataFrame
+        CV results, upon upon which descriptive statistics are to be run.
+
+    stats_to_run: str or list-like of str
+        pandas.DataFrame method name(s) indicating statistic to be run,
+        e.g. "mean" or ["mean", "std"]
+
+    return
+    ------
+
+    pandas.DataFrame of descriptive statistics, where rows correspond to
+    columns of `results` and where each columns correspond to `stats_to_run`.
+
+    """
+    if isintance(stats_to_run, str):
+        stats_to_run = [stats_to_run]
+
+    get_stats =lambda func: getattr(results, func)(
+                                   ).rename(func.__name__
+                                   ).to_frame()
+
+    to_return = [get_stats(s) for s in stats_to_run]
+
+    return to_return[0].join(to_return[:])
 
 
 def cv_score(X, y, model_obj, score_funcs, splits=5,
-             scale_obj=None, train_scores=True):
-    """Returns DataFrame of stats on 'model_obj' 
-    cross-validated over 'splits' splits of data,
-    using scores in 'score_funcs', which must be 
-    an interable. 
+             scale_obj=None, train_scores=True,
+             stats_to_run=["mean", "std"]):
+    """
+    Cross-validates passed model and returns performance statistics. Cross-validiation
+    is performed using shuffling. If passed model is a classifier, shuffling is performed
+    such that existing stratification of classes is preserved.
 
-    If 'scale_obj' is passed, X will be scaled within
-    each fold so as to prevent data leakage.
+    parameters
+    ----------
 
-    'train_scores' [default True] specifies reporting 
-    on train scores."""
-    return _cv_score(_cv_format(X, y, model_obj, 
-                                score_funcs, splits, 
-                                scale_obj, train_scores))
+    X: pd.DataFrame
+        Exogenous variables to be used as model inputs.
+
+    y: pd.Series
+        Endogenous variable that should be predicted by the model.
+
+    model_obj: sklearn.BaseEstimator
+        Instantiated (i.e. this is an instance of a class to which hyper-parameters
+        have already been passed) scikit-learn model, or model with similar API - i.e.
+        `model_obj.fit(X, y)` and `model_obj.predict(X)` would be used for model fitting
+        and predicting, respectively. E.g. `sklearn.RandomForestClassifier(max_depth=16)`.
+
+    score_funcs: callable, or list-like of callables
+        Score function(s) to be run on model predictions. E.g. `sklearn.metrics.accuracy_score`
+        or `[sklearn.metrics.f1_score, sklearn.metrics.accuracy_score]`.
+
+    splits: int, optional(default=5)
+        Number of splits to use for k-fold cross-validation.
+
+    scale_obj: sklearn.TransformerMixin, optional(default=None)
+        Should be a scikit-learn transform object (i.e. inherits from sklearn.BaseEstimator
+        and sklearn.TransformerMixin) or have a similar API (i.e. `scale_obj.fit_transform()`
+        works as expected). If passed, X will be scaled within each fold so as to prevent data
+        leakage. 
+
+    train_scores: bool, optional(default=True)
+        Determines whether training scores, in addition to test scores, are returned. Train
+        scores are useful for comparing to test scores in order to assess model fit.
+
+    stats_to_run: str or list-like of str, optional(default=["mean", "std"])
+        pandas.DataFrame method name(s) indicating statistic to be run,
+        e.g. "mean" or `["mad", "var"]`.
+
+    return
+    ------
+
+    pandas.DataFrame of descriptive statistics, as specified in `_cv_score`.
+    """
+    if callable(score_funcs):
+        score_funcs = [score_funcs]
+
+    return _cv_score(
+                _cv_format(
+                    X, y, model_obj, score_funcs, splits, scale_obj, train_scores
+                    )
+                )
 
 
 def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
@@ -116,12 +179,10 @@ def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
                         score_funcs=[confusion_matrix], 
                         splits=splits, scale_obj=scale_obj, 
                         train_scores=False)
-    
+
     results = [pd.concat({i: pd.DataFrame(trial[0],
                             index=['neg_true', 'pos_true'],
                             columns=['neg_pred', 'pos_pred'])}) 
                    for i, trial in enumerate(results, 1)]
-    
+
     return pd.concat(results)
-
-
