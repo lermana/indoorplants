@@ -5,17 +5,17 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import confusion_matrix
 
 
-def _train_and_score(model_obj, score_funcs, X_train, y_train,
+def train_and_score(model_obj, score_funcs, X_train, y_train,
                      X_test, y_test, train_scores=True):
     """Trains model to training data, outputs score(test data) 
     for each score in 'score_funcs', and does the same for 
     train data unless 'train_data' is set to False"""
     model = model_obj.fit(X_train, y_train)
+
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
-    return [(score_func(y_train, 
-                        y_hat_train),
-            score_func(y_test, y_hat_test))
+
+    return [(score_func(y_train, y_hat_train), score_func(y_test, y_hat_test))
             if train_scores is True else
             (score_func(y_test, y_hat_test))
             for score_func in score_funcs]
@@ -47,14 +47,15 @@ def _cv_engine(X, y, model_obj, score_funcs, splits=5,
         else:
             X_train = X.iloc[train, :]
             X_test = X.iloc[test, :]
-            
+ 
         y_train = y.iloc[train]
         y_test = y.iloc[test]
-        
-        results.append(_train_and_score(model_obj, score_funcs, 
-                                        X_train, y_train,
-                                        X_test, y_test, 
-                                        train_scores))
+
+        results.append(
+            train_and_score(model_obj, score_funcs, 
+                            X_train, y_train,
+                            X_test, y_test, 
+                            train_scores))
     return results
 
 
