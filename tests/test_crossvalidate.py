@@ -90,3 +90,23 @@ class TestCrossvalidate(unittest.TestCase):
 		self.assertTrue(model_obj.predict_called)
 		self.assertEqual(model_obj.X_fit_shape[1], model_obj.X_predict_shape[1])
 		self.assertEqual(model_obj.num_classes, 2)
+
+		# with `train_scores=False`
+
+		model_obj = ClassifierStub()
+
+		results = crossvalidate.train_and_score(model_obj, score_funcs,
+			                                    X_train, y_train,
+			                                    X_test, y_test, 
+			                                    train_scores=False)
+
+		self.assertEqual(len(score_funcs), len(results))
+		self.assertTrue(all(map(lambda row: len(row) == 1, results)))
+
+		self.assertTrue(model_obj.fit_called)
+		self.assertEqual(model_obj.X_fit_shape[0], model_obj.y_fit_shape[0])
+		self.assertEqual(model_obj.num_classes, 2)
+
+		self.assertTrue(model_obj.predict_called)
+		self.assertEqual(model_obj.X_fit_shape[1], model_obj.X_predict_shape[1])
+		self.assertEqual(model_obj.num_classes, 2)
