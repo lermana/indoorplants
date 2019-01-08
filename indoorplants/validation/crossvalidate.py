@@ -17,44 +17,41 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
 
     return [(score_func(y_train, y_hat_train), score_func(y_test, y_hat_test))
                 if train_scores is True else
-                    (score_func(y_test, y_hat_test))
-            for score_func in score_funcs]
+            (score_func(y_test, y_hat_test))
+                for score_func in score_funcs]
 
 
 def cv_engine(X, y, model_obj, score_funcs, splits=5,
               scale_obj=None, train_scores=True):
     """Splits data (based on whether model is classifier
     or regressor) and passes each fold to the train_and_score
-    function. 
+    function.
 
     Collects results and returns results as List."""
     if model_obj._estimator_type == 'classifier':
-        skf = StratifiedKFold(n_splits=splits,
-                              random_state=0)
+        skf = StratifiedKFold(n_splits=splits, random_state=0)
+
     elif model_obj._estimator_type == 'regressor':
-        skf = KFold(n_splits=splits,
-                    suffle=True,
-                    random_state=0)
+        skf = KFold(n_splits=splits, suffle=True, random_state=0)
+
     else:
         raise TypeError('Improper model type.')
 
     results = []
     for train, test in skf.split(X, y):
-
-        if scale_obj is not None:
-            X_train = scale_obj.fit_transform(X.iloc[train, :])
-            X_test = scale_obj.fit_transform(X.iloc[test, :])
-        else:
-            X_train = X.iloc[train, :]
-            X_test = X.iloc[test, :]
-
         y_train = y.iloc[train]
         y_test = y.iloc[test]
 
+        X_train = X.iloc[train, :]
+        X_test = X.iloc[test, :]
+
+        if scale_obj is not None:
+            X_train = scale_obj.fit_transform(X_train)
+            X_test = scale_obj.fit_transform(X_test)
+
         results.append(
             train_and_score(model_obj, score_funcs, 
-                            X_train, y_train,
-                            X_test, y_test, 
+                            X_train, y_train, X_test, y_test, 
                             train_scores))
     return results
 
@@ -82,7 +79,7 @@ def _cv_format(X, y, model_obj, score_funcs, splits=5,
         return dfs[0].join(dfs[1:])
 
 
-def _cv_score(results, stats_to_run):
+def describe_dataframe(results, stats_to_run):
     """
     Given DF of CV results, returns DF of descriptive statistics.
 
@@ -162,12 +159,12 @@ def cv_score(X, y, model_obj, score_funcs, splits=5,
     return
     ------
 
-    pandas.DataFrame of descriptive statistics, as specified in `_cv_score`.
+    pandas.DataFrame of descriptive statistics, as specified in `describe_dataframe`.
     """
     if callable(score_funcs):
         score_funcs = [score_funcs]
 
-    return _cv_score(
+    return describe_dataframe(
                 _cv_format(
                     X, y, model_obj, score_funcs, splits, scale_obj, train_scores))
 
