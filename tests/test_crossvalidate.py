@@ -1,4 +1,5 @@
 import unittest
+import collections
 import numpy as np
 import pandas as pd
 
@@ -12,7 +13,7 @@ class ModelStubBase:
 		self.y_fit_shape = None
 		self.fit_called = False
 
-		self.X_predict_shape = X.shape
+		self.X_predict_shape = None
 		self.predict_called = False
 
 		for k, v in kwargs.items():
@@ -36,7 +37,7 @@ class ClassifierStub(ModelStubBase):
 		self.X_fit_shape = X.shape
 		self.y_fit_shape = y.shape
 
-		if self.y_fit_shape[1] == 1:
+		if len(self.y_fit_shape) == 1:
 			self.num_classes = y.nunique()
 		else:
 			self.num_classes = self.y_fit_shape[1]
@@ -51,7 +52,7 @@ class ClassifierStub(ModelStubBase):
 
 
 def get_dummy_x_y():
-	X = pd.DataFrame(np.zeros(100, 10))
+	X = pd.DataFrame(np.zeros((100, 10)))
 	y = pd.Series(np.zeros(50)
 		 		 ).append(pd.Series(np.ones(50)))
 	return X, y
@@ -101,7 +102,7 @@ class TestCrossvalidate(unittest.TestCase):
 			                                    train_scores=False)
 
 		self.assertEqual(len(score_funcs), len(results))
-		self.assertTrue(all(map(lambda row: len(row) == 1, results)))
+		self.assertTrue(all(map(lambda row: not isinstance(row, collections.Iterable), results)))
 
 		self.assertTrue(model_obj.fit_called)
 		self.assertEqual(model_obj.X_fit_shape[0], model_obj.y_fit_shape[0])
