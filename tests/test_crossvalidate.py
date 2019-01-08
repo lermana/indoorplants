@@ -111,3 +111,17 @@ class TestCrossvalidate(unittest.TestCase):
 		self.assertTrue(model_obj.predict_called)
 		self.assertEqual(model_obj.X_fit_shape[1], model_obj.X_predict_shape[1])
 		self.assertEqual(model_obj.num_classes, 2)
+
+	def test_cv_engine(self):
+
+		# get dummy functionality and data
+
+		score_funcs = [dummy_score_func, dummy_score_func]
+		X_train, y_train = get_dummy_x_y()
+		X_test, y_test = get_dummy_x_y()
+
+		# test with and without train scores
+		# test a couple split numbers
+		# test with and without scale obj (ugh, you'll have to create a sub for this, too...)
+		# test with one score func, two score funcs, three score funcs?
+		# test with classification and regression - should you have different y for regression?

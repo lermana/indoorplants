@@ -16,13 +16,13 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
     y_hat_test = model.predict(X_test)
 
     return [(score_func(y_train, y_hat_train), score_func(y_test, y_hat_test))
-            if train_scores is True else
-            (score_func(y_test, y_hat_test))
+                if train_scores is True else
+                    (score_func(y_test, y_hat_test))
             for score_func in score_funcs]
 
 
-def _cv_engine(X, y, model_obj, score_funcs, splits=5,
-               scale_obj=None, train_scores=True):
+def cv_engine(X, y, model_obj, score_funcs, splits=5,
+              scale_obj=None, train_scores=True):
     """Splits data (based on whether model is classifier
     or regressor) and passes each fold to the train_and_score
     function. 
@@ -47,7 +47,7 @@ def _cv_engine(X, y, model_obj, score_funcs, splits=5,
         else:
             X_train = X.iloc[train, :]
             X_test = X.iloc[test, :]
- 
+
         y_train = y.iloc[train]
         y_test = y.iloc[test]
 
@@ -61,11 +61,11 @@ def _cv_engine(X, y, model_obj, score_funcs, splits=5,
 
 def _cv_format(X, y, model_obj, score_funcs, splits=5,
                scale_obj=None, train_scores=True):
-    """Gets results from _cv_engine and returns as 
+    """Gets results from cv_engine and returns as 
     unaggregated DataFrame, where trial number & score 
     function used are represented in index."""
-    res = _cv_engine(X, y, model_obj, score_funcs, 
-                     splits, scale_obj, train_scores)
+    res = cv_engine(X, y, model_obj, score_funcs, 
+                    splits, scale_obj, train_scores)
     if train_scores is False:
         cols = [_.__name__ for _ in score_funcs]
         return pd.DataFrame(res, columns=cols)
@@ -169,14 +169,12 @@ def cv_score(X, y, model_obj, score_funcs, splits=5,
 
     return _cv_score(
                 _cv_format(
-                    X, y, model_obj, score_funcs, splits, scale_obj, train_scores
-                    )
-                )
+                    X, y, model_obj, score_funcs, splits, scale_obj, train_scores))
 
 
 def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
     """Return confusion matrix for each CV trial."""
-    results = _cv_engine(X=X, y=y, model_obj=model_obj, 
+    results = cv_engine(X=X, y=y, model_obj=model_obj, 
                         score_funcs=[confusion_matrix], 
                         splits=splits, scale_obj=scale_obj, 
                         train_scores=False)
