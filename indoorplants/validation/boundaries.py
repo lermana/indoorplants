@@ -60,10 +60,10 @@ def cv_conf_mat(X, y, model_obj, t, splits=3, scale_obj=None):
     model_obj.predict = model_obj.predict_proba
     scores = _convert_score_funcs(t, [confusion_matrix])
     
-    results = crossvalidate.cv_engine(X=X, y=y, model_obj=model_obj, 
-                                     score_funcs=scores, 
-                                     splits=splits, scale_obj=scale_obj, 
-                                     train_scores=False) 
+    results = crossvalidate._cv_engine(X=X, y=y, model_obj=model_obj, 
+                                    score_funcs=scores, 
+                                    splits=splits, scale_obj=scale_obj, 
+                                    train_scores=False) 
     results = [pd.concat({i: pd.DataFrame(trial[0],
                             index=['neg_true', 'pos_true'],
                             columns=['neg_pred', 'pos_pred'])}) 
