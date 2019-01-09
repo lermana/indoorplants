@@ -11,35 +11,6 @@ from indoorplants.validation import crossvalidate, \
                                     boundaries
 
 
-def _validate_param_range(model_type, param_name, param_range,
-                          X, y, score_funcs, other_params={},
-                          splits=5, scale_obj=None, train_scores=True):
-    """Returns validation.cv_score across values in 'param_range'
-    for 'param_name', which should be a working parameter for the
-    passed model.
-
-    'model_type' should be an uninstantiated sklearn model (or
-    one with similar fit and predict methods). Additional 
-    hyper-parameters (i.e. not 'param_name' should be passed
-    in to 'other_params' as dictionary.
-
-    Please see validation.cv_score for details on other args.""" 
-    results = {}
-    for val in param_range:
-        model_obj = model_type(**{param_name:val}, **other_params)
-        
-        kwargs = {'model_obj': model_obj, 'X': X, 'y': y, 
-                  'splits': splits, 'scale_obj': scale_obj, 
-                  'train_scores': train_scores, 
-                  'score_funcs': score_funcs}
-        try:
-            _ = val / 1
-        except TypeError:
-            val = str(val)
-        results[val] = crossvalidate._cv_format(**kwargs)
-    return pd.concat(results)
-
-
 def validation_curve(X, y, score, model_type, param_name, 
                      param_range, other_params={}, splits=5, 
                      scale_obj=None, semilog=False, figsize=(11, 8)):
@@ -51,10 +22,10 @@ def validation_curve(X, y, score, model_type, param_name,
     visualized with log scaling. Pass tuple to 'figsize' if you 
     wish to override default of (11, 8)."""
 
-    results = _validate_param_range(model_type, param_name, 
-                                    param_range, X, y, [score], 
-                                    other_params, splits, scale_obj)
-    
+    results = crossvalidate.validate_param_range(
+                                X, y, model_type, param_name, param_range,
+                                [score], other_params, splits, scale_obj)
+
     means = results.groupby(level=0).mean().reset_index()
     stds = results.groupby(level=0).std().reset_index()
 
@@ -88,10 +59,10 @@ def validation_curve(X, y, score, model_type, param_name,
     plt.legend(loc="best")
 
 
-
 def calibration_curve(X, y, model_type, scale_obj=None, splits=5, 
                       model_params={}, calib_types=None, figsize=(11, 8)):
     """Plots calibration curves for original model & passed calibrators."""
+
     def plot_probs(results, c, label):
         plt.plot(results.index, results['mean'],
                  label=label, color=c, lw=2)
@@ -125,7 +96,6 @@ def calibration_curve(X, y, model_type, scale_obj=None, splits=5,
     title = plt.title('Calibration curve: {}'.format(
                                 model_type.__name__))
     plt.legend(loc="best")
-
 
 
 def precision_recall_curve(X, y, model_type, scale_obj=None, 
