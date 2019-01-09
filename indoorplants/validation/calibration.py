@@ -13,7 +13,7 @@ def _cv_proba(X, y, model_obj, splits=5, scale_obj=None):
     model_obj.predict = model_obj.predict_proba
     score = lambda t, p: np.hstack([t.values.reshape(-1, 1), 
                                     p[:, 1].reshape(-1, 1)])
-    return crossvalidate._cv_engine(X, y, model_obj,
+    return crossvalidate.cv_engine(X, y, model_obj,
                 [score], splits, scale_obj, False)
                          
 
