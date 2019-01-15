@@ -23,11 +23,11 @@ def qq_plot(series, figsize=(11, 8)):
 def feature_value_counts_by_class(table, class_col, feature, 
                                   figsize=(11, 8), **kwargs):
     """plot histogram of feature, with data color-coded by class"""
-    table.groupby([class_col, feature]
-                 ).size(
-                 ).unstack(0
-                 ).plot.bar(stacked=True, figsize=figsize, 
-                            alpha=.5, **kwargs)
+    ax = table.groupby([class_col, feature]
+             ).size(
+             ).unstack(0
+             ).plot.bar(stacked=True, figsize=figsize, 
+                        alpha=.5, **kwargs)
     
     plt.legend(loc='best')
     title = plt.title('{} histogram, across {}'.format(class_col, feature))
@@ -115,7 +115,7 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
 
     plt.figure()
     if bins is None:
-        bins = min(int(round(series.nunique(), -2) / 10), 100)
+        bins = max(min(int(round(series.nunique(), -2) / 10), 100), 10)
 
     ax = series.hist(figsize=figsize, bins=bins)
 

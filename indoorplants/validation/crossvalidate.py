@@ -18,7 +18,7 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
 
     return [(score_func(y_train, y_hat_train), score_func(y_test, y_hat_test))
                 if train_scores is True else
-            (score_func(y_test, y_hat_test))
+            score_func(y_test, y_hat_test)
                 for score_func in score_funcs]
 
 
@@ -68,7 +68,7 @@ def format_cv_results(results, score_funcs, train_scores=True):
         return pd.DataFrame(res, columns=cols)
 
     else:
-        res = np.array([tuple(chain(*_)) for _ in res])
+        res = np.array([tuple(chain(*_)) for _ in results])
         i, n, dfs = 0, res.shape[1], []
 
         while i < n:
@@ -82,7 +82,7 @@ def format_cv_results(results, score_funcs, train_scores=True):
         return dfs[0].join(dfs[1:])
 
 
-def describe_dataframe(results, stats_to_run):
+def describe_dataframe(results, stats_to_run=["mean", "std"]):
     """
     Given DF of CV results, returns DF of descriptive statistics.
 
@@ -103,16 +103,16 @@ def describe_dataframe(results, stats_to_run):
     columns of `results` and where each columns correspond to `stats_to_run`.
 
     """
-    if isintance(stats_to_run, str):
+    if isinstance(stats_to_run, str):
         stats_to_run = [stats_to_run]
 
-    get_stats =lambda func: getattr(results, func)(
-                                   ).rename(func.__name__
-                                   ).to_frame()
+    get_stats = lambda func_name: getattr(results, func_name)(
+                                         ).rename(func_name
+                                         ).to_frame()
 
     to_return = [get_stats(s) for s in stats_to_run]
 
-    return to_return[0].join(to_return[:])
+    return to_return[0].join(to_return[1:])
 
 
 def cv_score(X, y, model_obj, score_funcs, splits=5,
@@ -171,7 +171,8 @@ def cv_score(X, y, model_obj, score_funcs, splits=5,
                 format_cv_results(
                     cv_engine(
                         X, y, model_obj, score_funcs, splits, scale_obj, train_scores
-                        )))
+                        ), 
+                    score_funcs, train_scores))
 
 
 def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
@@ -206,7 +207,7 @@ def validate_param_range(X, y, model_type, param_name, param_range,
     """ 
     results = {}
     for val in param_range:
-        model_obj = model_type(**{param_name:val}, **other_params)
+        model_obj = model_type(**{param_name: val}, **other_params)
 
         some_kwargs = {'model_obj': model_obj, 'X': X, 'y': y, 
                        'splits': splits, 'scale_obj': scale_obj}
@@ -216,7 +217,7 @@ def validate_param_range(X, y, model_type, param_name, param_range,
         if isinstance(val, collections.Iterable):
             val = str(val) # how to sort this?
 
-        _res = cv_engine({**some_kwargs, **other_kwargs})
-        results[val] = format_cv_results(_res, **other_kwargs)
+        res = cv_engine(**some_kwargs, **other_kwargs)
+        results[val] = format_cv_results(res, **other_kwargs)
 
     return pd.concat(results)
