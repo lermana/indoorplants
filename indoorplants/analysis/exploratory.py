@@ -17,35 +17,39 @@ def qq_plot(series, figsize=(11, 8)):
                      xy=xy,
                      bbox=bbox)
     title = ax.set_title('Q-Q plot')
+    return ax
 
 
-def feature_hist_by_class(table, class_col, feature, bins=None, 
-                          figsize=(11, 8), **kwargs):
+def feature_value_counts_by_class(table, class_col, feature, 
+                                  figsize=(11, 8), **kwargs):
     """plot histogram of feature, with data color-coded by class"""
-    table.groupby([class_col, feature]
-                 ).size(
-                 ).unstack(0
-                 ).plot.bar(stacked=True, figsize=figsize, 
-                            alpha=.5, **kwargs)
+    ax = table.groupby([class_col, feature]
+             ).size(
+             ).unstack(0
+             ).plot.bar(stacked=True, figsize=figsize, 
+                        alpha=.5, **kwargs)
     
     plt.legend(loc='best')
-    title = plt.title('{} histogram, across {}'.format(class_col, 
-                                                       feature))
+    title = plt.title('{} histogram, across {}'.format(class_col, feature))
+    return ax
 
-def feature_hist_by_class_continuous(eda_df, class_, feature): 
+
+def feature_hist_by_class(eda_df, class_col, feature, bins=None): 
     """
     Plots a histogram of passed feature, broken out by class, which
     must be of a binary nature.
     """
     fig = plt.figure(figsize=(11, 8))
     ax = fig.add_subplot(111)
-    ax = eda_df[eda_df[class_] == 1
-               ][feature].hist(ax=ax, bins=100, color="orange", alpha=.5)
-    ax = eda_df[eda_df[class_] == 0
-               ][feature].hist(ax=ax, bins=100, color="blue", alpha=.5)
+    ax = eda_df[eda_df[class_col] == 1
+               ][feature].hist(ax=ax, bins=bins, color="orange", alpha=.5)
+    ax = eda_df[eda_df[class_col] == 0
+               ][feature].hist(ax=ax, bins=bins, color="blue", alpha=.5)
     l = ax.set_ylabel("count")
     l = ax.set_xlabel(f"{feature}")
-    t = ax.set_title(f"hist: {feature}, by {class_} (orange=1, blue=0)")
+    t = ax.set_title(f"hist: {feature}, by {class_col} (orange=1, blue=0)")
+    return ax
+
 
 def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
     """scatter feature against class"""
@@ -64,6 +68,7 @@ def classes_across_feature(table, class_col, feature, figsize=(11, 8)):
     plt.yticks([classes[0], classes[-1]])
     plt.legend(loc='best')
     title = plt.title('{}: by {}'.format(class_col, feature))
+    return ax
 
 
 def scatter_by_class(table, class_col, x, y, figsize=(11, 8), alpha=.5):
@@ -84,6 +89,7 @@ def scatter_by_class(table, class_col, x, y, figsize=(11, 8), alpha=.5):
     ax.set_ylabel(y)
     plt.legend(loc='best')
     title = plt.title('{}: {} vs. {}'.format(class_col, y, x))
+    return ax
 
 
 def box_plot_by_class(eda_df, class_col, feature):
@@ -94,6 +100,7 @@ def box_plot_by_class(eda_df, class_col, feature):
     l= ax.set_xlabel(f"{class_col}")
     l= ax.set_ylabel(f"{feature}")
     t = ax.set_title(f"box plot: {feature} by {class_col}")
+    return ax
 
 
 def center_scale_plot(series, center_func, scale_func, bins=None,
@@ -103,9 +110,12 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
     scale functions"""
     
     # create figure, plot hist, and get max dimensions
+    if series.dtype not in (int, float):
+        raise TypeError("Must pass numeric data for histogram!")
+
     plt.figure()
     if bins is None:
-        bins = min(int(round(series.nunique(), -2) / 10), 100)
+        bins = max(min(int(round(series.nunique(), -2) / 10), 100), 10)
 
     ax = series.hist(figsize=figsize, bins=bins)
 
@@ -218,3 +228,4 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
                             series.name, 
                             center_func.__name__, 
                             scale_func.__name__))
+    return ax
