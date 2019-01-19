@@ -31,7 +31,14 @@ class ModelStubBase:
         return np.zeros(self.y_fit_shape)
 
 
+class RegressorStub(ModelStubBase):
+
+    self._estimator_type = "regressor"
+
+
 class ClassifierStub(ModelStubBase):
+
+    self._estimator_type = "classifier"
 
     def fit(self, X, y):
         self.X_fit_shape = X.shape
@@ -119,6 +126,12 @@ class TestCrossvalidate(unittest.TestCase):
         score_funcs = [dummy_score_func, dummy_score_func]
         X_train, y_train = get_dummy_x_y()
         X_test, y_test = get_dummy_x_y()
+
+        # what do I want to check here?
+            # - correct number of train, test splits  (this should be renamed to 'folds', right?)
+            # - scale obj called correctly (e.g. adter splitting) if passed
+            # - train_and_test called during every split
+            # - each time, correct args passed to train_and_test
 
         # test with and without train scores
         # test a couple split numbers

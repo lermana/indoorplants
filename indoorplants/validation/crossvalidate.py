@@ -8,32 +8,38 @@ from sklearn.metrics import confusion_matrix
 
 def train_and_score(model_obj, score_funcs, X_train, y_train,
                      X_test, y_test, train_scores=True):
-    """Trains model to training data, outputs score(test data) 
+    """
+    Trains model to training data, outputs score(test data) 
     for each score in 'score_funcs', and does the same for 
-    train data unless 'train_data' is set to False"""
+    train data unless 'train_data' is set to False
+    """
     model = model_obj.fit(X_train, y_train)
 
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
 
-    return [(score_func(y_train, y_hat_train), score_func(y_test, y_hat_test))
-                if train_scores is True else
-            score_func(y_test, y_hat_test)
-                for score_func in score_funcs]
+    apply_score_func = lambda func: (
+                            func(y_train, y_hat_train), func(y_test, y_hat_test)
+                                          ) if train_scores is True else
+                            func(y_test, y_hat_test) 
+
+    return list(map(apply_score_func, score_funcs))
 
 
 def cv_engine(X, y, model_obj, score_funcs, splits=5,
-              scale_obj=None, train_scores=True):
-    """Splits data (based on whether model is classifier
+              scale_obj=None, train_scores=True, random_state=0):
+    """
+    Splits data (based on whether model is classifier
     or regressor) and passes each fold to the train_and_score
     function.
 
-    Collects results and returns results as List."""
+    Collects results and returns results as List.
+    """
     if model_obj._estimator_type == 'classifier':
-        skf = StratifiedKFold(n_splits=splits, random_state=0)
+        skf = StratifiedKFold(n_splits=splits, random_state=random_state)
 
     elif model_obj._estimator_type == 'regressor':
-        skf = KFold(n_splits=splits, suffle=True, random_state=0)
+        skf = KFold(n_splits=splits, suffle=True, random_state=random_state)
 
     else:
         raise TypeError('Improper model type.')
@@ -51,9 +57,10 @@ def cv_engine(X, y, model_obj, score_funcs, splits=5,
             X_test = scale_obj.fit_transform(X_test)
 
         results.append(
-            train_and_score(model_obj, score_funcs, 
-                            X_train, y_train, X_test, y_test, 
-                            train_scores))
+            train_and_score(
+                model_obj, score_funcs, X_train, y_train, X_test, y_test, train_scores
+                ))
+
     return results
 
 
@@ -68,16 +75,18 @@ def format_cv_results(results, score_funcs, train_scores=True):
         return pd.DataFrame(res, columns=cols)
 
     else:
-        res = np.array([tuple(chain(*_)) for _ in results])
-        i, n, dfs = 0, res.shape[1], []
+        res = np.array([tuple(chain(*trial)) for trial in results]) # do I like 'trial'?
+        dfs = []
 
-        while i < n:
-            dfs.append(pd.concat({
-                score_funcs[i // 2].__name__:
-                    pd.DataFrame(res[:, i:i+2], 
-                                columns=['train', 'test'])},
-                    axis=1))
-            i += 2
+        for i in range(0, res.shape[1], 2):
+            dfs.append(
+                pd.concat(
+                    {
+                    score_funcs[i // 2].__name__: 
+                        pd.DataFrame(res[:, i:i+2], columns=['train', 'test'])
+                        },
+                    axis=1
+                    ))
 
         return dfs[0].join(dfs[1:])
 
@@ -176,16 +185,21 @@ def cv_score(X, y, model_obj, score_funcs, splits=5,
 
 
 def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
-    """Return confusion matrix for each CV trial."""
+    """
+    Return confusion matrix for each CV trial.
+    """
     results = cv_engine(X=X, y=y, model_obj=model_obj, 
-                        score_funcs=[confusion_matrix], 
+                        score_funcs=confusion_matrix, 
                         splits=splits, scale_obj=scale_obj, 
                         train_scores=False)
 
-    results = [pd.concat({i: pd.DataFrame(trial[0],
-                            index=['neg_true', 'pos_true'],
-                            columns=['neg_pred', 'pos_pred'])}) 
-                   for i, trial in enumerate(results, 1)]
+    results = [pd.concat(
+                {
+                    i: pd.DataFrame(trial[0],
+                                    index=['neg_true', 'pos_true'],
+                                    columns=['neg_pred', 'pos_pred'])
+                }
+               ) for i, trial in enumerate(results, 1)]
 
     return pd.concat(results)
 
@@ -194,14 +208,14 @@ def validate_param_range(X, y, model_type, param_name, param_range,
                          score_funcs, other_params={}, splits=5,
                          scale_obj=None, train_scores=True):
     """
-    Returns validation.cv_score across values in 'param_range'
-    for 'param_name', which should be a working parameter for the
+    Returns validation.cv_score across values in `param_range`
+    for `param_name`, which should be a working parameter for the
     passed model.
 
-    'model_type' should be an uninstantiated sklearn model (or
+    `model_type` should be an uninstantiated sklearn model (or
     one with similar fit and predict methods). Additional 
-    hyper-parameters (i.e. not 'param_name' should be passed
-    in to 'other_params' as dictionary.
+    hyper-parameters (i.e. not `param_name` should be passed
+    in to `other_params` as dictionary.
 
     Please see validation.cv_score for details on other args.
     """ 
