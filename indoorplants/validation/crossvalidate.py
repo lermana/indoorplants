@@ -235,3 +235,36 @@ def validate_param_range(X, y, model_type, param_name, param_range,
         results[val] = format_cv_results(res, **other_kwargs)
 
     return pd.concat(results)
+
+
+def validate_param_range(X, y, model_type, param_name, param_range,
+                         score_funcs, other_params={}, splits=5,
+                         scale_obj=None, train_scores=True):
+    """
+    Returns validation.cv_score across values in 'param_range'
+    for 'param_name', which should be a working parameter for the
+    passed model.
+
+    'model_type' should be an uninstantiated sklearn model (or
+    one with similar fit and predict methods). Additional 
+    hyper-parameters (i.e. not 'param_name' should be passed
+    in to 'other_params' as dictionary.
+
+    Please see validation.cv_score for details on other args.
+    """ 
+    results = {}
+    for val in param_range:
+        model_obj = model_type(**{param_name: val}, **other_params)
+
+        some_kwargs = {'model_obj': model_obj, 'X': X, 'y': y, 
+                       'splits': splits, 'scale_obj': scale_obj}
+
+        other_kwargs = {'train_scores': train_scores, 'score_funcs': score_funcs}
+
+        if isinstance(val, collections.Iterable):
+            val = str(val) # how to sort this?
+
+        res = cv_engine(**some_kwargs, **other_kwargs)
+        results[val] = format_cv_results(res, **other_kwargs)
+
+    return pd.concat(results)
