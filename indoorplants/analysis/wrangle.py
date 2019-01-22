@@ -4,7 +4,7 @@ def get_feature_size_by_class(df, cls_col, features):
     name, return:
     - pd.crosstab(df.cls_col, df.feature).stack()
     
-    Works differently if multiple features passed.
+    Works differently from `pd.crosstab` if multiple features passed.
 
     Parameters
     ----------
@@ -39,10 +39,13 @@ def get_feature_size_by_class(df, cls_col, features):
               ) / len(df)
 
 
-def get_class_cnts_by_features_nulls(df, class_, features):
-    """Retrieves, given a DataFrame, class column, and list
-    of feature column names, a sort of crosstab-vector,
-    where it's class col vs. all features, with a ratio
+def get_class_cnts_by_features_nulls(df, class_col, features):
+    """
+    Note: this function may be partially broken.
+
+    Retrieves, given: a DataFrame, class column, and list
+    of feature column names; a sort of crosstab-vector,
+    where it's `class_col` vs. all features, with a ratio
     of True:False (in class) included as well.
 
     Parameters
@@ -51,7 +54,7 @@ def get_class_cnts_by_features_nulls(df, class_, features):
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
-    class_ : str
+    class_col : str
     Column name for the class / target.
 
     features : iterable
@@ -64,8 +67,8 @@ def get_class_cnts_by_features_nulls(df, class_, features):
     column names in `features`, broken out by null-or-not,
     as indices.
     """ 
-    groupbys = [df[[col, class_]
-                   ].groupby([col, class_]
+    groupbys = [df[[col, class_col]
+                   ].groupby([col, class_col]
                    ).size(
                    ).unstack(
                    ).T.rename(columns={False: f"{col}_False",
