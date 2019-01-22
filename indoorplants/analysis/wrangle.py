@@ -80,6 +80,25 @@ def get_class_cnts_by_features_nulls(df, class_col, features):
     _ahh["tf_ratio"] = _ahh[True] / _ahh[False]
     return _ahh.sort_values("tf_ratio")
 
+def drop_users_nully_obj_cols(users):
+    """can this be generalized? does this kinda achieve what the above is trying and failing to do?"""
+    obj = users.select_dtypes(include=object)
+    obj_nulls = obj.isnull().sum()
+    obj = obj.join(users.is_spam)
+
+    obj_nice_table = obj.groupby("is_spam"
+                        ).count(
+                        ).T.join(obj_nulls.rename("null_cnt")
+                        ).sort_values("null_cnt", ascending=False
+                        ).join((obj_nulls[obj_nulls > 0] / len(users)
+                                ).rename("null_ratio"))
+
+    obj_nulls_90 = obj_nice_table[obj_nice_table.null_ratio >= .9].index
+
+    return users.drop(list(filter(lambda c: c not in ("blog_url", "portfolio_completed"),
+                                  obj_nulls_90)),
+                      axis=1)
+
 
 def get_null_stats(df):
     """I need a docstring"""
