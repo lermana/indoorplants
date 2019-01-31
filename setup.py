@@ -7,5 +7,4 @@ setup(name='indoorplants',
       url='https://github.com/lermana/indoorplants',
       packages=['indoorplants',
                 'indoorplants.analysis',
-                'indoorplants.validation']
-     )
+                'indoorplants.validation'])
