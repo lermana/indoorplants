@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 
 def get_feature_size_by_class(df, cls_col, features):
@@ -197,6 +198,11 @@ def euclidean(feature_one, feature_two):
                    ).sum())
 
 
+def euclidean_squared(feature_one, feature_two):
+    return (feature_one - feature_two
+               ).pow(2
+               ).sum()
+
 
 def get_feature_iter_func(flat):
     if flat:
@@ -205,19 +211,29 @@ def get_feature_iter_func(flat):
         return lambda feature_names: itertools.product(feature_names, feature_names)
 
 
+def normalize_min_max(df):
+    cols = df.columns
+    inds = df.index
+
+    arr = MinMaxScaler().fit_transform(df)
+    return pd.DataFrame(arr, columns=cols, index=inds)
+
+
 def feature_distances(distance_func):
 
-    def inner(df, feature_names, flat=True):
+    def inner(df, feature_names_list, flat=True, normalize_data=True):
+        if normalize_data:
+            df = normalize_min_max(df[feature_names_list].astype(float))
 
         iter_func = get_feature_iter_func(flat)
-        
+
         scores = [(f1, f2, distance_func(df[f1], df[f2]))
-                  for f1, f2 in iter_func(feature_names)]
-        
+                  for f1, f2 in iter_func(feature_names_list)]
+
         scores_df = pd.DataFrame(scores, columns=["feature_one",
                                                   "feature_two",
                                                   f"{distance_func.__name__}"])
-        
+
         if flat:
             scores_df = scores_df.set_index(["feature_one",
                                              "feature_two"]
@@ -235,5 +251,10 @@ def feature_distances(distance_func):
 
 
 @feature_distances
-def euclidean_distances(feature_one, feature_two, flat=True):
+def euclidean_distances(feature_one, feature_two, **kwargs):
     return euclidean(feature_one, feature_two)
+
+
+@feature_distances
+def euclidean_squared_distances(feature_one, feature_two, **kwargs):
+    return euclidean_squared(feature_one, feature_two)
