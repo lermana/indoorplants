@@ -1,8 +1,6 @@
 # IndoorPlants
 
-[![Build Status](https://travis-ci.org/lermana/indoorplants.svg?branch=master)](https://travis-ci.org/lermana/indoorplants)
-
-- named for the wonderful coffe shop _Tommy_ in Montreal
+(named for the wonderful coffe shop _Tommy_ in Montreal)
 
 #### Note
 

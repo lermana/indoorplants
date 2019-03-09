@@ -18,20 +18,12 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
 
-<<<<<<< HEAD
     apply_score_func = lambda func: (
                             func(y_train, y_hat_train), func(y_test, y_hat_test)
                                           ) if train_scores is True else
                             func(y_test, y_hat_test) 
 
     return list(map(apply_score_func, score_funcs))
-=======
-    return [
-        (func(y_train, y_hat_train), func(y_test, y_hat_test)) 
-            if train_scores is True else
-                func(y_test, y_hat_test)
-            for func in score_funcs]
->>>>>>> df5ea3e5ac52048eaa899cefce8c92563b83ef24
 
 
 def cv_engine(X, y, model_obj, score_funcs, splits=5,
