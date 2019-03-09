@@ -33,12 +33,12 @@ class ModelStubBase:
 
 class RegressorStub(ModelStubBase):
 
-    self._estimator_type = "regressor"
+    estimator_type = "regressor"
 
 
 class ClassifierStub(ModelStubBase):
 
-    self._estimator_type = "classifier"
+    estimator_type = "classifier"
 
     def fit(self, X, y):
         self.X_fit_shape = X.shape

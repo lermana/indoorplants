@@ -5,5 +5,4 @@ setup(name='indoorplants',
       description='tools for data analysis and model validation',
       author='Abe Lerman',
       url='https://github.com/lermana/indoorplants',
-      packages={'': 'indoorplants'}
-     )
+      package_dir={'': 'indoorplants'})
