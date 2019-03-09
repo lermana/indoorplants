@@ -13,15 +13,16 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
     for each score in 'score_funcs', and does the same for 
     train data unless 'train_data' is set to False
     """
+    def apply_score_func(func):
+        if train_scores is True:
+            return (func(y_train, y_hat_train), func(y_test, y_hat_test))
+        else:
+            return func(y_test, y_hat_test)
+
     model = model_obj.fit(X_train, y_train)
 
     y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
-
-    apply_score_func = lambda func: (
-                            func(y_train, y_hat_train), func(y_test, y_hat_test)
-                                          ) if train_scores is True else
-                            func(y_test, y_hat_test) 
 
     return list(map(apply_score_func, score_funcs))
 
