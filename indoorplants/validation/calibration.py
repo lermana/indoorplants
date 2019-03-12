@@ -19,13 +19,13 @@ def _cv_proba(X, y, model_obj, splits=5, scale_obj=None, **cv_engine_kwargs):
                 )
 
     return crossvalidate.cv_engine(
-                X=X, y=y,
-                model_obj=model_obj,
-                score_funcs=[score],
-                splits=splits,
-                scale_obj=scale_obj,
-                **cv_engine_kwargs
-                )
+                            X=X, y=y,
+                            model_obj=model_obj,
+                            score_funcs=[score],
+                            splits=splits,
+                            scale_obj=scale_obj,
+                            **cv_engine_kwargs
+                            )
 
 
 def _get_rank_stats(results):
@@ -60,9 +60,8 @@ def cv_rank(X, y, model_obj, splits=5, scale_obj=None, **cv_engine_kwargs):
                             model_obj=model_obj,
                             splits=splits,
                             scale_obj=scale_obj,
-                            **cv_engine_kwargs)
-                        )
-                    ),
+                            **cv_engine_kwargs
+                    ))),
                 columns=['class', 'proba'])
 
     return _get_rank_stats(results)
@@ -74,47 +73,76 @@ def _calibrate_cv(model_results, calib_type, splits):
     using passed 'calib_type' calibration model type 
     (uninstantiated model object).
     """
+    def calibrator_fit(split_number):
+        X = model_results.loc[split_number, 'proba'].to_frame()
+        y = model_results.loc[split_number, 'class']
+        return calib_type().fit(X, y)
+
+    def calibrator_predict_proba(calib_obj, split_number):
+        X = model_results.loc[split_number, 'proba'].to_frame()
+        return calib_obj.predict_proba(X)
+
+    def get_results_for_split(split_number):
+        calib_obj = calibrator_fit(split_number)
+        return calibrator_predict_proba(calib_obj, split_number)
+
     calib_res = [np.hstack(
-                    [model_results.loc[i, 'class'
-                            ].values.reshape(-1, 1),
-                     calib_type(
-                        ).fit(
-                            model_results.loc[i, 'proba'
-                            ].to_frame(),
-                            model_results.loc[i, 'class']
-                        ).predict_proba(
-                            model_results.loc[i, 'proba'
-                            ].to_frame()
-                            )[:, 1].reshape(-1, 1)])
+                    [
+                        model_results.loc[i, 'class'].values.reshape(-1, 1),
+                        get_results_for_split(i)[:, 1].reshape(-1, 1)
+                    ])
                  for i in range(splits)]
-    df = pd.concat({i: pd.DataFrame(data) for 
-                        i, data in enumerate(calib_res)})
+
+    df = pd.concat({
+            i: pd.DataFrame(data) for i, data in enumerate(calib_res)
+            })
+
     df.columns = ['class', 'proba']
     return df
 
 
 def _cv_calibrate(X, y, model_obj, splits=5, scale_obj=None,
-                  calib_types=None):
-    """Returns CV results for passed model, and calibrates results."""
-    model_res = _cv_proba(X, y, model_obj, splits, scale_obj)
-    df = pd.concat({i: pd.DataFrame(data)for i, data in 
-                        enumerate(chain(*model_res))})
-    df.columns = ['class', 'proba']
-    if calib_types is None: return pd.concat({'original_model': df}, axis=1)
+                  calib_types=None, **cv_engine_kwargs):
+    """
+    Returns CV results for passed model, and calibrates results.
+    """
+    model_res = _cv_proba(
+                    X=X, y=y,
+                    model_obj=model_obj,
+                    splits=splits,
+                    scale_obj=scale_obj,
+                    **cv_engine_kwargs
+                    )
 
-    dfs_cal = pd.concat(
-                [pd.concat({cal_type.__name__ + '_cal': 
-                    _calibrate_cv(df, cal_type, splits)},
-                 axis=1) for cal_type in calib_types])
-    return pd.concat({'original_model': df}, axis=1).join(dfs_cal)
+    df = pd.concat({
+            i: pd.DataFrame(data)for i, data in enumerate(chain(*model_res))
+        })
+
+    df.columns = ['class', 'proba']
+
+    if calib_types is None:
+        return pd.concat({'original_model': df}, axis=1)
+
+    else:
+        dfs_cal = pd.concat(
+                    [
+                        pd.concat({
+                            cal_type.__name__ + '_cal': _calibrate_cv(df, cal_type, splits)
+                            }, axis=1) 
+                        for cal_type in calib_types
+                    ])
+
+        return pd.concat({'original_model': df}, axis=1).join(dfs_cal)
 
 
 def _prob_bin_stats(results, pos_only=True):
-    """Bins passed probabilities and calculates mean and std. 
-    actual positive class frequencies."""
+    """
+    Bins passed probabilities and calculates mean and std. 
+    actual positive class frequencies.
+    """
     df = results.copy()
     df['prob_bin'] = df.proba.round(1)
-    
+
     grouped = df[['class', 'prob_bin']
                  ].groupby([df.index.get_level_values(0),
                             'class', 'prob_bin']
