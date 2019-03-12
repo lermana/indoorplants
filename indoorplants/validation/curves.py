@@ -59,7 +59,7 @@ def validation_curve(X, y, score, model_type, param_name,
     plt.legend(loc="best")
 
 
-def calibration_curve(X, y, model_type, scale_obj=None, splits=5, 
+def calibration_curve(X, y, model_type, splits=5, **cv_engine_kwargs
                       model_params={}, calib_types=None, figsize=(11, 8)):
     """Plots calibration curves for original model & passed calibrators."""
 
@@ -73,7 +73,8 @@ def calibration_curve(X, y, model_type, scale_obj=None, splits=5,
 
     model_obj = model_type(**model_params)
     results = calibration.cv_calibrate(X, y, model_obj, splits, 
-                                       scale_obj, calib_types)
+                                       calib_types, **cv_engine_kwargs)
+
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     xtick = ax.set_xticks(results.index)
