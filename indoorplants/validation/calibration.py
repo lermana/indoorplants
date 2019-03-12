@@ -5,46 +5,75 @@ from itertools import chain
 from indoorplants.validation import crossvalidate
 
 
-def _cv_proba(X, y, model_obj, splits=5, scale_obj=None):
-    """Return numpy array of 'splits'-fold CV results, 
+def _cv_proba(X, y, model_obj, splits=5, scale_obj=None, **cv_engine_kwargs):
+    """
+    Return numpy array of 'splits'-fold CV results, 
     where results are:
     -column 0: actual class
-    -columns 1 & 2: proba. of each of neg. and pos. classes."""
+    -columns 1 & 2: proba. of each of neg. and pos. classes.
+    """
     model_obj.predict = model_obj.predict_proba
-    score = lambda t, p: np.hstack([t.values.reshape(-1, 1), 
-                                    p[:, 1].reshape(-1, 1)])
-    return crossvalidate.cv_engine(X, y, model_obj,
-                [score], splits, scale_obj, False)
-                         
+
+    score = lambda true, predicted: np.hstack(
+                [true.values.reshape(-1, 1), predicted[:, 1].reshape(-1, 1)]
+                )
+
+    return crossvalidate.cv_engine(
+                X=X, y=y,
+                model_obj=model_obj,
+                score_funcs=[score],
+                splits=splits,
+                scale_obj=scale_obj,
+                **cv_engine_kwargs
+                )
+
 
 def _get_rank_stats(results):
-    """Helper function that produces median and m.a.d
+    """
+    Helper function that produces median and m.a.d
     probabilities for each of 2 classes given _cv_proba 
-    results with reworked columns."""
+    results with reworked columns.
+    """
     grouped = results[['class', 'proba']
-                         ].groupby(['class']
-                         ).median().rename(
-                         columns={'proba':'median'})
-    return grouped.join(
-                results[['class', 'proba']
-                           ].groupby(['class']
-                           ).mad().rename(
-                            columns={'proba':'mad'}))
+                     ].groupby(
+                        ['class']
+                     ).median(
+                     ).rename(columns={'proba':'median'})
+
+    return grouped.join(results[
+                            ['class', 'proba']
+                               ].groupby(['class']
+                  ).mad(
+                  ).rename(columns={'proba':'mad'}))
 
 
-def cv_rank(X, y, model_obj, splits=5, scale_obj=None):
-    """Returns median and m.a.d. probabilities for each class
-    for test results over 'splits'-fold CV."""
-    results = pd.DataFrame(np.vstack(chain(
-        *_cv_proba(X, y, model_obj, splits, scale_obj))),
-        columns=['class', 'proba'])
+def cv_rank(X, y, model_obj, splits=5, scale_obj=None, **cv_engine_kwargs):
+    """
+    Returns median and m.a.d. probabilities for each class
+    for test results over 'splits'-fold CV.
+    """
+    results = pd.DataFrame(
+                np.vstack(
+                    chain(
+                        *_cv_proba(
+                            X=X, y=y,
+                            model_obj=model_obj,
+                            splits=splits,
+                            scale_obj=scale_obj,
+                            **cv_engine_kwargs)
+                        )
+                    ),
+                columns=['class', 'proba'])
+
     return _get_rank_stats(results)
 
 
 def _calibrate_cv(model_results, calib_type, splits):
-    """Produces calibrated probabilities for passed 'model_results'
+    """
+    Produces calibrated probabilities for passed 'model_results'
     using passed 'calib_type' calibration model type 
-    (uninstantiated model object)."""
+    (uninstantiated model object).
+    """
     calib_res = [np.hstack(
                     [model_results.loc[i, 'class'
                             ].values.reshape(-1, 1),
