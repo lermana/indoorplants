@@ -213,10 +213,13 @@ def _prob_bin_stats(results, retain_counts=True):
     stds = pd.concat({"std": stds}, axis=1)
     stds.columns = stds.columns.swaplevel()
 
-    return means.join(stds)
+    to_return = means.join(stds)
+    to_return.index = to_return.index.rename("predicted_probability_bin")
+
+    return to_return
 
 
-def cv_calibrate(X, y, model_obj, splits=5, calib_types=None, **cv_engine_kwargs):
+def cv_calibrate(X, y, model_obj, splits=5, calib_types=None, retain_counts=True, **cv_engine_kwargs):
     """Return mean and std. CV results comparing actual positive
     class probabilities to binned predicted probabilities, for 
     the original model and all passed calibrators."""
@@ -229,7 +232,8 @@ def cv_calibrate(X, y, model_obj, splits=5, calib_types=None, **cv_engine_kwargs
                     )
 
     modeled = pd.concat({"original_model":
-                _prob_bin_stats(res.loc[:, "original_model"])}, axis=1)
+                _prob_bin_stats(res.loc[:, "original_model"], retain_counts=retain_counts)
+                        }, axis=1)
 
     if calib_types is None:
         return modeled
@@ -238,8 +242,8 @@ def cv_calibrate(X, y, model_obj, splits=5, calib_types=None, **cv_engine_kwargs
         calib_results = [pd.concat(
                                 {
                                     mod.__name__ + "_cal":
-                                    _prob_bin_stats(res.loc[:, mod.__name__ + "_cal"])
-                                },
-                            axis=1) 
+                                        _prob_bin_stats(res.loc[:, mod.__name__ + "_cal"],
+                                                        retain_counts=retain_counts)
+                                }, axis=1) 
                         for mod in calib_types]
         return modeled.join(pd.concat(calib_results))
