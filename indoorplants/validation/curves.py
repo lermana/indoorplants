@@ -59,8 +59,9 @@ def validation_curve(X, y, score, model_type, param_name,
     plt.legend(loc="best")
 
 
-def calibration_curve(X, y, model_type, splits=5, **cv_engine_kwargs
-                      model_params={}, calib_types=None, figsize=(11, 8)):
+def calibration_curve(X, y, model_type, splits=5, model_params={},
+                      calib_types=None, figsize=(11, 8), display_counts=True,
+                      **cv_engine_kwargs):
     """Plots calibration curves for original model & passed calibrators."""
 
     def plot_probs(results, c, label):
@@ -93,7 +94,7 @@ def calibration_curve(X, y, model_type, splits=5, **cv_engine_kwargs
     ax.set_xlim(0, 1)
     xlab = ax.set_xlabel('predicted probability (bin)')
     ax.set_ylim(0, 1)
-    ylab = ax.set_ylabel('% of data with positive label')
+    ylab = ax.set_ylabel('empirical probability')
     title = plt.title('Calibration curve: {}'.format(
                                 model_type.__name__))
     plt.legend(loc="best")
