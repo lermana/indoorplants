@@ -21,8 +21,8 @@ def validation_curve(X, y, score, model_type, param_name,
     
     Pass True for `semilog` if `param_range` values would be better
     visualized with log scaling. Pass tuple to `figsize` if you 
-    wish to override default of (11, 8)."""
-
+    wish to override default of (11, 8).
+    """
     results = crossvalidate.validate_param_range(
                                 X, y, model_type, param_name, param_range,
                                 [score], other_params, splits, scale_obj)
