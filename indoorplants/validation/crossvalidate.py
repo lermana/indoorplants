@@ -190,7 +190,7 @@ def cv_conf_mat(X, y, model_obj, splits=5, scale_obj=None):
     Return confusion matrix for each CV trial.
     """
     results = cv_engine(X=X, y=y, model_obj=model_obj, 
-                        score_funcs=confusion_matrix, 
+                        score_funcs=[confusion_matrix], 
                         splits=splits, scale_obj=scale_obj, 
                         train_scores=False)
 
