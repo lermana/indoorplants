@@ -55,7 +55,7 @@ def validation_curve(X, y, score, model_type, param_name,
     xlab = ax.set_xlabel(param_name)
     xlab = ax.set_xticklabels(means["index"].values)
     ylab = ax.set_ylabel(score.__name__)
-    title = plt.title("Validation curve: {}, across {}".format(
+    title = plt.title("validation curve: {}, across {}".format(
                       model_type.__name__, param_name))
     plt.legend(loc="best")
 
@@ -67,17 +67,26 @@ def calibration_curve(X, y, model_type, splits=5, model_params={},
     Plots calibration curves for original model & passed calibrators.
     """
     def plot_probs_and_counts(results, c, label, plot_counts=display_counts):
+        # greb emprirical probability from `results`
         probs = results["empirical_probability"]
+
+        # plot empirical probability
         plt.plot(probs.index, probs["mean"], label=label, color=c, lw=2)
 
+        # function to get +/- std around empirical probability means
         bands = lambda bin: (bin["mean"] - bin["std"], bin["mean"] + bin["std"])
 
-        plt.fill_between(probs.index, *bands(probs), alpha=0.1, color=c, lw=2)
-
+        # plot counts with std lines if `display_counts` is True
         if plot_counts is True:
             counts = results["proportion_of_test_data"]
-            plt.bar(counts.index, counts["mean"].cumsum(), label=label, color="steelblue", width=.2)
-            # add error bars for std below
+            plt.bar(counts.index, counts["mean"], yerr=counts["std"],
+                    color="steelblue", width=.025, alpha=.2, label=None)
+
+        # fill std around original model's mean calibration
+        plt.fill_between(probs.index, *bands(probs), alpha=0.1, color=c, lw=2)
+
+        # display horizontal grid lines
+        plt.grid(which="major", axis="y", color='grey', linestyle='--')
 
     model_obj = model_type(**model_params)
     results = calibration.cv_calibrate(X=X, y=y,
@@ -107,7 +116,7 @@ def calibration_curve(X, y, model_type, splits=5, model_params={},
     xlab = ax.set_xlabel("predicted probability (bin)")
     ax.set_ylim(0, 1)
     ylab = ax.set_ylabel("empirical probability")
-    title = plt.title("Calibration curve: {}".format(
+    title = plt.title("calibration curve: {}".format(
                                 model_type.__name__))
     plt.legend(loc="best")
 
@@ -142,7 +151,7 @@ def precision_recall_curve(X, y, model_type, scale_obj=None,
                     xytext=(row[1] - .01, 
                             row[2] + .02))
     
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    title = plt.title("Precision & recall by decision boundary: {}".format(
+    plt.xlabel("pecall")
+    plt.ylabel("precision")
+    title = plt.title("precision & recall by decision boundary: {}".format(
                                         model_type.__name__))
