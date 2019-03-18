@@ -18,7 +18,7 @@ def validation_curve(X, y, score, model_type, param_name,
     Cross validates `model_type` across passed parameters and
     plots results. Please see _validate_param_range for more
     details around the cross validation arguments.
-    
+
     Pass True for `semilog` if `param_range` values would be better
     visualized with log scaling. Pass tuple to `figsize` if you 
     wish to override default of (11, 8).
@@ -27,36 +27,70 @@ def validation_curve(X, y, score, model_type, param_name,
                                 X, y, model_type, param_name, param_range,
                                 [score], other_params, splits, scale_obj)
 
+    # special handling for iterable hyper-parameter values
+    if results.index.levels[0].dtype == "O":
+
+        # map `param_range` values to `str`
+        param_range = list(map(str, param_range))
+
+        # get `Categorical` column, which will preserve original ordering
+        cat_type = pd.api.types.CategoricalDtype(param_range, ordered=True)
+        cat_df = pd.DataFrame(param_range, columns=[param_name]
+                  ).astype(cat_type)
+
+        # temporarily drop score function names from `results`
+        score_name = results.columns.levels[0][0]
+        results.columns = results.columns.droplevel(0)
+
+        # merge in `Categorical` columns
+        results = results.reset_index(
+                        ).rename(columns={param_name: "param_value_str"})
+
+        results = results.merge(cat_df, left_on="param_value_str", right_on=param_name
+                        ).drop("param_value_str", axis=1)
+
+        # sort `results` correctly and set index
+        results = results.sort_values(param_name
+                        ).set_index([param_name, "level_1"])
+
+        # set `score_name` as top level column
+        results = pd.concat({score_name: results}, axis=1)
+
+    # get stats
     means = results.groupby(level=0).mean().reset_index()
     stds = results.groupby(level=0).std().reset_index()
 
+    # create and setup figure and axes
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     xtick = ax.set_xticks(means.index)
 
-    if semilog is True: plt_func = plt.semilogx
-    else: plt_func = plt.plot
-    plt_func(means.index, means[(score.__name__, "train")
-                                ].values, 
+    # handle logarithmic axes
+    if semilog is True:
+        plt_func = plt.semilogx
+    else:
+        plt_func = plt.plot
+
+    # plot average train scores
+    plt_func(means.index, means[(score.__name__, "train")].values, 
              label="train", color="darkorange", lw=2)
-    plt_func(means.index, means[(score.__name__, "test")
-                                ].values, 
+
+    # plot average validation scores
+    plt_func(means.index, means[(score.__name__, "test")].values, 
              label="validation", color="navy", lw=2)
 
-    bands = lambda _: (means[(score.__name__, _)]
-                        - stds[(score.__name__, _)],
-                       means[(score.__name__, _)]
-                        + stds[(score.__name__, _)])
-    plt.fill_between(means.index, *bands("train"), 
-                     alpha=0.1, color="darkorange", lw=2)
-    plt.fill_between(means.index, *bands("test"), 
-                     alpha=0.1, color="navy", lw=2)
+    # plot standard deviation bands around average scores
+    bands = lambda _: (means[(score.__name__, _)] - stds[(score.__name__, _)],
+                       means[(score.__name__, _)] + stds[(score.__name__, _)])
 
+    plt.fill_between(means.index, *bands("train"), alpha=0.1, color="darkorange", lw=2)
+    plt.fill_between(means.index, *bands("test"), alpha=0.1, color="navy", lw=2)
+
+    # final plot formatting
     xlab = ax.set_xlabel(param_name)
-    xlab = ax.set_xticklabels(means["index"].values)
+    xlab = ax.set_xticklabels(means[param_name].values)
     ylab = ax.set_ylabel(score.__name__)
-    title = plt.title("validation curve: {}, across {}".format(
-                      model_type.__name__, param_name))
+    title = plt.title(f"validation curve: {model_type.__name__}, across {param_name}")
     plt.legend(loc="best")
 
 
@@ -80,7 +114,7 @@ def calibration_curve(X, y, model_type, splits=5, model_params={},
         if plot_counts is True:
             counts = results["proportion_of_test_data"]
             plt.bar(counts.index, counts["mean"], yerr=counts["std"],
-                    color="steelblue", width=.025, alpha=.2, label=None)
+                    color="steelblue", width=.025, alpha=.2, label="bin_count_normalized")
 
         # fill std around original model's mean calibration
         plt.fill_between(probs.index, *bands(probs), alpha=0.1, color=c, lw=2)
