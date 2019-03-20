@@ -3,12 +3,12 @@ def get_feature_size_by_class(df, cls_col, features):
     Given DataFrame, class column name, and feature column
     name, return:
     - pd.crosstab(df.cls_col, df.feature).stack()
-    
+
     Works differently from `pd.crosstab` if multiple features passed.
 
     Parameters
     ----------
-    
+
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
@@ -17,7 +17,6 @@ def get_feature_size_by_class(df, cls_col, features):
 
     features : str or list
     Column name(s) for the feature.
-    
 
     Return
     ------
@@ -59,11 +58,11 @@ def get_class_cnts_by_features_nulls(df, class_col, features):
 
     features : iterable
     Iterable of column names of the feature(s).
-    
+
     Return
     ------
 
-    DataFrame with columns: [False, True, "tf_ratio], with
+    pandas.DataFrame with columns: [False, True, "tf_ratio], with
     column names in `features`, broken out by null-or-not,
     as indices.
     """ 
@@ -80,56 +79,121 @@ def get_class_cnts_by_features_nulls(df, class_col, features):
     _ahh["tf_ratio"] = _ahh[True] / _ahh[False]
     return _ahh.sort_values("tf_ratio")
 
-def drop_users_nully_obj_cols(users):
-    """can this be generalized? does this kinda achieve what the above is trying and failing to do?"""
-    obj = users.select_dtypes(include=object)
-    obj_nulls = obj.isnull().sum()
-    obj = obj.join(users.is_spam)
-
-    obj_nice_table = obj.groupby("is_spam"
-                        ).count(
-                        ).T.join(obj_nulls.rename("null_cnt")
-                        ).sort_values("null_cnt", ascending=False
-                        ).join((obj_nulls[obj_nulls > 0] / len(users)
-                                ).rename("null_ratio"))
-
-    obj_nulls_90 = obj_nice_table[obj_nice_table.null_ratio >= .9].index
-
-    return users.drop(list(filter(lambda c: c not in ("blog_url", "portfolio_completed"),
-                                  obj_nulls_90)),
-                      axis=1)
-
 
 def get_null_stats(df):
-    """I need a docstring"""
+    """
+    Function that will return count (absolute and relative)  of null 
+    values in each column in `df`.
+
+    Parameters
+    ----------
+
+    df : pandas.DataFrame
+        DataFrame on which this function will operate.
+
+    Return
+    ------
+
+    pandas.DataFrame with `df.columns` as row index and `["cnt", "ratio"]` 
+    (for absolute and relative counts, respectively) in column index.
+    """
     nulls = df.isnull().sum()
     nulls = nulls.rename("cnt").to_frame()
     nulls["ratio"] = nulls / len(df)
     return nulls.sort_values("ratio", ascending=False)
 
 
-def get_cols_over_x_pcnt_null(df, x=.99):
+def get_cols_over_x_pcnt_null(df, x=.99, exclude=None):
+    """
+    Function that will return all columns in `df` with over a certan 
+    proportion of missing values.
+
+    Parameters
+    ----------
+
+    df : pandas.DataFrame
+        DataFrame on which this function will operate.
+
+    x : float, with value between 0 and 1 (default=.99)
+        Proportion of rows allowed to be missing in a given column.
+
+    exclude : str or list (default=None)
+        Column name(s) to exclude from results.
+
+    Return
+    ------
+
+    pandas.Index of columns with over `x` proportion missing values.
+    """
     nulls = get_null_stats(df)
+
+    if exclude:
+        if isinstance(exclude, str):
+            exclude = [exclude]
+
+        nulls = nulls.loc[~nulls.index.isin(exclude)]
+
     return nulls[nulls.ratio > x].index
 
 
 def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None):
-    """I need a docstring"""
-    to_remove = get_cols_over_x_pcnt_null(df, x=.99)
+    """
+    Function that will remove from `df` all columns with over an `x` proportion 
+    of missing values. User can use `exclude` to prevent certain columns from 
+    being removed.
 
-    if isinstance(exclude, str):
-        exclude = [exclude]
-    if exclude:
-        to_remove = list(filter(lambda x: x not in exclude, to_remove))
+    Parameters
+    ----------
 
+    df : pandas.DataFrame
+        DataFrame on which this function will operate.
+
+    x : float, with value between 0 and 1 (default=.99)
+        Proportion of rows allowed to be missing in a given column.
+
+    exclude : str or list (default=None)
+        Column name(s) to exclude from removal (i.e. for use when you know a
+        given column has missing values but you'd like to keep it anyway).
+
+    Return
+    ------
+
+    pandas.DataFrame with columns with columns with over an `x` proportion 
+    of missing values removed.
+    """
+    to_remove = get_cols_over_x_pcnt_null(df, x=x, exclude=exclude)
     return df.drop(to_remove, axis=1)
 
 
-def create_is_null_cols(df, null_threshold=.5, remove_originals=False, exclude=None):
-    null_cols = get_cols_over_x_pcnt_null(df, null_threshold)
+def make_is_null_cols(df, x=.5, exclude=None, remove_originals=False):
+    """
+    Function that will make in `df` boolean re-representaions of all 
+    columns with over an `x` proportion of missing values. I.e., allows 
+    using simply whether the value of that column in that row is `null` 
+    instead of taking the actual column value.
 
-    if exclude is not None:
-        null_cols = list(filter(lambda c: c not in exclude, null_cols))
+    Parameters
+    ----------
+
+    df : pandas.DataFrame
+        DataFrame on which this function will operate.
+
+    x : float, with value between 0 and 1 (default=.99)
+        Proportion of rows allowed to be missing in a given column.
+
+    exclude : str or list (default=None)
+        Column name(s) to exclude from consideration (i.e. for use when you know a
+        given column has missing values but you'd like to keep it anyway).
+
+    remove_originals : bool (default=False)
+        Determines whether original columns are removed or left in `df`.
+
+    Return
+    ------
+
+    `df`, including new, `is_null_...` columns.
+    """
+    null_cols = get_cols_over_x_pcnt_null(df, x=x, exclude=exclude)
 
     for col in null_cols:
         df["is_null_" + col] = df[col].isnull()
@@ -141,8 +205,10 @@ def create_is_null_cols(df, null_threshold=.5, remove_originals=False, exclude=N
 
 
 def get_cols_ratio_equal_val(df, val, ratio=1):
-    """Useful for finding cols where a certain proportion of rows are equal
-    to a particular value."""
+    """
+    Useful for finding cols where a certain proportion of rows are equal
+    to a particular value.
+    """
     check = (df == val).sum()
     return check[check == (ratio * len(df))].index
 
@@ -153,29 +219,48 @@ def get_data_leak_cols_cls(df, cls_col,
                            drop_for_analysis=None,
                            join_for_analysis=None,
                            return_style="list"):
-    """Currently works for categorical features."""
+    """
+    Makes use of `get_feature_size_by_class`. Currently works for categorical
+    features.
+    """
+
+    # by default, columns of all `dtype` are selected (shouldn't happen if this works
+    # only for categorical columns...)
     if dtypes is None:
         dtypes = [object, int, bool]
+
     df = df.select_dtypes(include=dtypes)
 
+    # user can include additional data to be joined in; e.g. if separate `X` and `y`
     if join_for_analysis is not None:
         df = df.join(join_for_analysis)
 
+    # user can specify certain columns to be excluded from analysis
     if drop_for_analysis:
         df = df.drop(drop_for_analysis, axis=1)
 
-    feature_data = {feature: get_feature_size_by_class(df, cls_col, feature)
-                    for feature in filter(lambda c: c != cls_col, df.columns)}
+    # get size of each feature-value & class-value set; exclude `class_col` ...
+    # ... from feature set to be examined
+    feature_data = {
+                        feature: get_feature_size_by_class(df, cls_col, feature)
+                        for feature in filter(lambda c: c != cls_col, df.columns)
+                    }
 
-    is_not_same_num_vals_across_class = lambda x: len(set([len(x.loc[x.index.levels[0][i]].index) 
-                                                          for i in range(len(x.index.levels))])
-                                                     ) == 1
+    # function to determine whether all feature values present against all class values
+    is_not_same_num_vals_across_class = lambda x: len(
+                                                    set(
+                                                [
+                                                    len(x.loc[x.index.levels[0][i]].index) 
+                                                    for i in range(len(x.index.levels))
+                                                ]
+                                                    )) == 1
 
+    # get ... is this erroneous? should the above func have `!=` ? kinda seems like it should
     missing_cols = [feature for feature in feature_data.keys() if 
                     is_not_same_num_vals_across_class(feature_data[feature])]
-    
+
     is_feature_skewed_across_class = lambda x: len(x[x.ratio >= threshold].index) > 0
-    
+
     skewed_cols = [feature for feature in feature_data.keys() if 
                    is_feature_skewed_across_class(feature_data[feature])]
 
