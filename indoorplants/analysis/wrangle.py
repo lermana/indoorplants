@@ -1,10 +1,12 @@
-def get_feature_size_by_class(df, cls_col, features):
+def get_feature_size_by_class(df, cls_col, features, normalize=True):
     """
-    Given DataFrame, class column name, and feature column
+    Given pandas.DataFrame, class column name, and feature column
     name, return:
     - pd.crosstab(df.cls_col, df.feature).stack()
 
     Works differently from `pd.crosstab` if multiple features passed.
+    Note that this function makes the most sense for categorical 
+    features.
 
     Parameters
     ----------
@@ -13,15 +15,15 @@ def get_feature_size_by_class(df, cls_col, features):
         DataFrame on which this function will operate.
 
     cls_col : str
-    Column name for the class / target.
+        Column name for the class / target.
 
     features : str or list
-    Column name(s) for the feature.
+        Column name(s) for the feature.
 
     Return
     ------
 
-    DataFrame of size figures.
+    pandas.DataFrame of size figures.
     """
     if isinstance(features, str):
         features = [features]
@@ -30,22 +32,23 @@ def get_feature_size_by_class(df, cls_col, features):
 
     to_group_by = [cls_col] + features
 
-    return df[to_group_by
-              ].groupby(to_group_by
-              ).size(
-              ).rename("ratio"
-              ).to_frame(
-              ) / len(df)
+    to_return = df[to_group_by
+                  ].groupby(to_group_by
+                  ).size(
+                  ).rename("cnt"
+                  ).to_frame()
+
+    if normalize:
+        to_return = (to_return / len(df)
+                    ).rename(columns={"cnt": "ratio"})
+
+    return to_return
 
 
-def get_class_cnts_by_features_nulls(df, class_col, features):
+def get_class_cnts_by_feature_null(df, class_col, feature, normalize=True):
     """
-    Note: this function may be partially broken.
-
-    Retrieves, given: a DataFrame, class column, and list
-    of feature column names; a sort of crosstab-vector,
-    where it's `class_col` vs. all features, with a ratio
-    of True:False (in class) included as well.
+    Break out class fequencies (in `df[class_col]`) by whether or not 
+    `df[feature]` is null.
 
     Parameters
     ----------
@@ -53,31 +56,49 @@ def get_class_cnts_by_features_nulls(df, class_col, features):
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
-    class_col : str
-    Column name for the class / target.
+    cls_col : str
+        Column name for the class / target.
 
-    features : iterable
-    Iterable of column names of the feature(s).
+    feature : str
+        Column name for the feature.
+
+    normalize : bool (default=True)
+        Whether or not to normalize class counts by number of rows in 
+        the respective feature is: [null / non-null] query. I.e. the
+        value for `normalize` is passed straight to the `normalize`
+        kwarg in `pd.Series.value_counts`, which is called on data that
+        is filtered for either `df[feature].isnull()` of `df[feature].notnull()`.
 
     Return
     ------
 
-    pandas.DataFrame with columns: [False, True, "tf_ratio], with
-    column names in `features`, broken out by null-or-not,
-    as indices.
-    """ 
-    groupbys = [df[[col, class_col]
-                   ].groupby([col, class_col]
-                   ).size(
-                   ).unstack(
-                   ).T.rename(columns={False: f"{col}_False",
-                                       True: f"{col}_True"})
-                for col in features]
+    pandas.DataFrame of class counts, broken out by whether or not 
+    `df[feature]` is null.
+    """
+    null = df.loc[df[feature].isnull(), class_col
+                 ].value_counts(normalize=normalize
+                 ).rename("null"
+                 ).to_frame()
 
-    groupbys[0].index.name = ""
-    _ahh = groupbys[0].join(groupbys[1:]).T.fillna(0)
-    _ahh["tf_ratio"] = _ahh[True] / _ahh[False]
-    return _ahh.sort_values("tf_ratio")
+    not_null = df.loc[df[feature].notnull(), class_col
+                     ].value_counts(normalize=normalize
+                     ).rename("not_null")
+
+    return pd.concat({feature: null.join(not_null)}, axis=1)
+
+
+def get_class_cnts_by_many_features_nulls(df, class_col, features_list, normalize=True):
+    """
+    Wrapper for `get_class_cnts_by_feature_null`, with only difference being that, in 
+    this function, users passes a `list` of features, as opposed to a single feature.
+    """ 
+    return pd.concat(
+        [
+            get_class_cnts_by_feature_null(df, class_col, f, normalize=normalize)
+            for f in features_list
+        ],
+        axis=1
+    )
 
 
 def get_null_stats(df):
@@ -182,8 +203,9 @@ def make_is_null_cols(df, x=.5, exclude=None, remove_originals=False):
         Proportion of rows allowed to be missing in a given column.
 
     exclude : str or list (default=None)
-        Column name(s) to exclude from consideration (i.e. for use when you know a
-        given column has missing values but you'd like to keep it anyway).
+        Column name(s) to exclude from consideration (i.e. for use when you 
+        know a given column has missing values but you'd like to keep it 
+        anyway).
 
     remove_originals : bool (default=False)
         Determines whether original columns are removed or left in `df`.
@@ -213,29 +235,56 @@ def get_cols_ratio_equal_val(df, val, ratio=1):
     return check[check == (ratio * len(df))].index
 
 
-def get_data_leak_cols_cls(df, cls_col,
-                           threshold=.99,
-                           dtypes=None,
-                           drop_for_analysis=None,
-                           join_for_analysis=None,
+def get_data_leak_cols_cls(df, cls_col, threshold=.99, dtypes=None,
+                           drop_for_analysis=None, join_for_analysis=None,
                            return_style="list"):
     """
     Makes use of `get_feature_size_by_class`. Currently works for categorical
-    features.
+    features in classification problems.
+
+    Parameters
+    ----------
+
+    df : pandas.DataFrame
+        DataFrame on which this function will operate.
+
+    cls_col: str
+        Name of class column.
+
+    threshold : float, with value between 0 and 1 (default=.99)
+        Proportion of rows allowed to be missing in a given column.
+
+    dtypes: type, or list[type] (default=None)
+        Specific column type(s) to limit analysis to. Defaults to all types except
+        `float` if no value passed.
+
+    drop_for_analysis : str or list (default=None)
+        Column name(s) to exclude from consideration.
+
+    join_for_analysis : pd.Series or pd.DataFrame (default=None)
+        Additional data to be joined in to `df; e.g. if separate `X` and `y`.
+        `cls_col` will be looked up post-join, if there is a join.
+
+    return_style: str (default="list")
+        If "list" is passed, a `list` containing the names of both missing and skewed
+        columns will be returned. Otherwise, these two groups will be returned
+        separately, each under their own key in a `dict`.
+
+    Return
+    ------
+
+    `df`, including new, `is_null_...` columns.
     """
-
-    # by default, columns of all `dtype` are selected (shouldn't happen if this works
-    # only for categorical columns...)
     if dtypes is None:
-        dtypes = [object, int, bool]
+        kwargs = {"exclude": float}
+    else:
+        kwargs = {"include": dtypes}
 
-    df = df.select_dtypes(include=dtypes)
+    df = df.select_dtypes(**kwargs)
 
-    # user can include additional data to be joined in; e.g. if separate `X` and `y`
     if join_for_analysis is not None:
         df = df.join(join_for_analysis)
 
-    # user can specify certain columns to be excluded from analysis
     if drop_for_analysis:
         df = df.drop(drop_for_analysis, axis=1)
 
