@@ -1,8 +1,11 @@
-def get_feature_size_by_class(df, cls_col, features, normalize=True):
+import pandas as pd
+
+def get_feature_size_by_class(df, class_col, features, normalize=True):
     """
     Given pandas.DataFrame, class column name, and feature column
     name, return:
-    - pd.crosstab(df.cls_col, df.feature).stack()
+
+        - pd.crosstab(df.class_col, df.feature).stack()
 
     Works differently from `pd.crosstab` if multiple features passed.
     Note that this function makes the most sense for categorical 
@@ -14,7 +17,7 @@ def get_feature_size_by_class(df, cls_col, features, normalize=True):
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
-    cls_col : str
+    class_col : str
         Column name for the class / target.
 
     features : str or list
@@ -30,7 +33,7 @@ def get_feature_size_by_class(df, cls_col, features, normalize=True):
     elif not isinstance(features, list):
         raise TypeError("Must pass str or list for `features`.")
 
-    to_group_by = [cls_col] + features
+    to_group_by = [class_col] + features
 
     to_return = df[to_group_by
                   ].groupby(to_group_by
@@ -56,7 +59,7 @@ def get_class_cnts_by_feature_null(df, class_col, feature, normalize=True):
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
-    cls_col : str
+    class_col : str
         Column name for the class / target.
 
     feature : str
@@ -235,12 +238,102 @@ def get_cols_ratio_equal_val(df, val, ratio=1):
     return check[check == (ratio * len(df))].index
 
 
-def get_data_leak_cols_cls(df, cls_col, threshold=.99, dtypes=None,
-                           drop_for_analysis=None, join_for_analysis=None,
-                           return_style="list"):
+def get_feature_sizes_dict(df, class_col, normalize=True):
     """
-    Makes use of `get_feature_size_by_class`. Currently works for categorical
-    features in classification problems.
+    Helper function to get size of each feature-value & class-value set,
+    with `class_col` excluded from feature set to be examined.
+    """
+    return {
+                feature: get_feature_size_by_class(df,
+                                                   class_col,
+                                                   feature,
+                                                   normalize=normalize)
+
+                for feature in filter(lambda c: c != class_col, df.columns)
+    }
+
+
+def is_feature_not_present_across_class(feature_size_by_class_df):
+    """
+    Helper function to see whether all subsections in `feature_size_by_class_df`, 
+    based on slicing with different values in first-level rwo index, have same 
+    number of values in second-level row index.
+
+    Note that `feature_size_by_class_df` then must obviously have at least two 
+    row-index levels.
+
+    The intended use case is for handling results from `get_feature_size_by_class`,
+    where first-level row index corresponds to class values, and second-level
+    row index corresponds to feature values.
+
+    The idea is to confirm that all feature values are present across all class 
+    values. If this is not true, feature is either highly predictive or leaking
+    data.
+
+    Feature in `feature_size_by_class_df` should be discrete, i.e. of a finite 
+    set of values.
+
+    Parameters
+    ----------
+
+    feature_size_by_class_df : pandas.DataFrame
+        DataFrame on which this function will operate, which must have at least
+        two row-index levels.
+
+    Return
+    ------
+
+    `bool` indicating whether all class values see all feature values.
+    """
+    index_vals = feature_size_by_class_df.reset_index().iloc[:, :2]
+    counts = index_vals.groupby(index_vals.columns[0]).size()
+    return counts.nunique() != 1
+
+
+def is_feature_skewed_across_class(feature_size_by_class_df, threshold):
+    """
+    Helper function to see whether all values in `feature_size_by_class_df.ratio` 
+    are below `threshold`. `feature_size_by_class_df` is presumed to be a result 
+    from the function `get_feature_size_by_class`.
+
+    The intended use case is for seeing whether feature has a certain
+    value(s) that very strongly point towards a particular class value,
+    as, if this is true, feature is either highly predictive or leaking
+    data.
+
+    Feature in `feature_size_by_class_df` should be discrete, i.e. of a finite set 
+    of values.
+
+    Parameters
+    ----------
+
+    feature_size_by_class_df : pandas.DataFrame
+        DataFrame on which this function will operate, which must have at least
+        two row-index levels.
+
+    Return
+    ------
+
+    `bool` indicating whether all class values see all feature values.
+    """
+    return ((
+        feature_size_by_class_df[
+            feature_size_by_class_df.ratio >= threshold
+            ]
+    ).sum() > 0).all()
+
+
+def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
+                           drop_for_analysis=None, join_for_analysis=None,
+                           return_style="dict"):
+    """
+    Function to assess whether categorical features in `df` are possibly
+    leaking data. This is achieved through through determining whether, 
+    for a given feature:
+
+        - every class value sees the same number of feature values
+        - whether a disproportionate number of rows correspond to a certain 
+          class value (where disproportionate-ness is set using `threshold`)
 
     Parameters
     ----------
@@ -248,13 +341,13 @@ def get_data_leak_cols_cls(df, cls_col, threshold=.99, dtypes=None,
     df : pandas.DataFrame
         DataFrame on which this function will operate.
 
-    cls_col: str
+    class_col: str
         Name of class column.
 
     threshold : float, with value between 0 and 1 (default=.99)
         Proportion of rows allowed to be missing in a given column.
 
-    dtypes: type, or list[type] (default=None)
+    dtypes : type, or list[type] (default=None)
         Specific column type(s) to limit analysis to. Defaults to all types except
         `float` if no value passed.
 
@@ -263,17 +356,23 @@ def get_data_leak_cols_cls(df, cls_col, threshold=.99, dtypes=None,
 
     join_for_analysis : pd.Series or pd.DataFrame (default=None)
         Additional data to be joined in to `df; e.g. if separate `X` and `y`.
-        `cls_col` will be looked up post-join, if there is a join.
+        `class_col` will be looked up post-join, if there is a join.
 
-    return_style: str (default="list")
-        If "list" is passed, a `list` containing the names of both missing and skewed
-        columns will be returned. Otherwise, these two groups will be returned
-        separately, each under their own key in a `dict`.
+    return_style : str (default="list")
+        If "list" is passed, a single `list` will be returned that contains the names 
+        of both features for which:
+
+            - not all class values see all feature values ("missing")
+            - there is a disproportionate concentration of a certain class value at a 
+              certain feature value ("skewed")
+
+        Otherwise, these two groups will be returned separately, each under their own 
+        key in a `dict`.
 
     Return
     ------
 
-    `df`, including new, `is_null_...` columns.
+    Columns with potential data leak issues, formatted as per `return_style`.
     """
     if dtypes is None:
         kwargs = {"exclude": float}
@@ -288,32 +387,15 @@ def get_data_leak_cols_cls(df, cls_col, threshold=.99, dtypes=None,
     if drop_for_analysis:
         df = df.drop(drop_for_analysis, axis=1)
 
-    # get size of each feature-value & class-value set; exclude `class_col` ...
-    # ... from feature set to be examined
-    feature_data = {
-                        feature: get_feature_size_by_class(df, cls_col, feature)
-                        for feature in filter(lambda c: c != cls_col, df.columns)
-                    }
+    feature_sizes = get_feature_sizes_dict(df, class_col, normalize=True)
+    filter_feature_data = lambda func, *args: [
+                            k for k, v in feature_sizes.items() if func(v, *args)
+                        ]
 
-    # function to determine whether all feature values present against all class values
-    is_not_same_num_vals_across_class = lambda x: len(
-                                                    set(
-                                                [
-                                                    len(x.loc[x.index.levels[0][i]].index) 
-                                                    for i in range(len(x.index.levels))
-                                                ]
-                                                    )) == 1
-
-    # get ... is this erroneous? should the above func have `!=` ? kinda seems like it should
-    missing_cols = [feature for feature in feature_data.keys() if 
-                    is_not_same_num_vals_across_class(feature_data[feature])]
-
-    is_feature_skewed_across_class = lambda x: len(x[x.ratio >= threshold].index) > 0
-
-    skewed_cols = [feature for feature in feature_data.keys() if 
-                   is_feature_skewed_across_class(feature_data[feature])]
+    missing_cols = filter_feature_data(is_feature_not_present_across_class)
+    skewed_cols = filter_feature_data(is_feature_skewed_across_class, threshold)
 
     if return_style == "list":
-        return list(set(set(missing_cols) | set(skewed_cols)))
+        return list(set(missing_cols) | set(skewed_cols))
     else:
         return {"missing": missing_cols, "skewed": skewed_cols}
