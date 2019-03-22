@@ -379,13 +379,13 @@ def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
     else:
         kwargs = {"include": dtypes}
 
+    if drop_for_analysis:
+        df = df.drop(drop_for_analysis, axis=1)
+
     df = df.select_dtypes(**kwargs)
 
     if join_for_analysis is not None:
         df = df.join(join_for_analysis)
-
-    if drop_for_analysis:
-        df = df.drop(drop_for_analysis, axis=1)
 
     feature_sizes = get_feature_sizes_dict(df, class_col, normalize=True)
     filter_feature_data = lambda func, *args: [
