@@ -290,7 +290,7 @@ def is_feature_not_present_across_class(feature_size_by_class_df):
     return counts.nunique() != 1
 
 
-def is_feature_skewed_across_class(feature_size_by_class_df, threshold):
+def is_feature_skewed_across_class(feature_size_by_class_df, threshold=.99):
     """
     Helper function to see whether all values in `feature_size_by_class_df.ratio` 
     are below `threshold`. `feature_size_by_class_df` is presumed to be a result 
@@ -311,15 +311,17 @@ def is_feature_skewed_across_class(feature_size_by_class_df, threshold):
         DataFrame on which this function will operate, which must have at least
         two row-index levels.
 
+    threshold: float, with value between 0 and 1 (default=.99)
+        Proportion of rows allowed that are allowed to be taken up by single
+        `class_col` & `feature` value grouping.
+
     Return
     ------
 
     `bool` indicating whether all class values see all feature values.
     """
     return ((
-        feature_size_by_class_df[
-            feature_size_by_class_df.ratio >= threshold
-            ]
+        feature_size_by_class_df.ratio >= threshold
     ).sum() > 0).all()
 
 
@@ -345,7 +347,8 @@ def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
         Name of class column.
 
     threshold : float, with value between 0 and 1 (default=.99)
-        Proportion of rows allowed to be missing in a given column.
+        Proportion of rows allowed that are allowed to be taken up by single
+        `class_col` & `feature` value grouping.
 
     dtypes : type, or list[type] (default=None)
         Specific column type(s) to limit analysis to. Defaults to all types except
