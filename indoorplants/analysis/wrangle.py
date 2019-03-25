@@ -90,10 +90,12 @@ def get_class_cnts_by_feature_null(df, class_col, feature, normalize=True):
     return pd.concat({feature: null.join(not_null)}, axis=1)
 
 
-def get_class_cnts_by_many_features_nulls(df, class_col, features_list, normalize=True):
+def get_class_cnts_by_many_features_nulls(df, class_col, features_list,
+                                          normalize=True):
     """
-    Wrapper for `get_class_cnts_by_feature_null`, with only difference being that, in 
-    this function, users passes a `list` of features, as opposed to a single feature.
+    Wrapper for `get_class_cnts_by_feature_null`, with only difference being 
+    that, in this function, users passes a `list` of features, as opposed to 
+    a single feature.
     """ 
     return pd.concat(
         [
@@ -101,7 +103,7 @@ def get_class_cnts_by_many_features_nulls(df, class_col, features_list, normaliz
             for f in features_list
         ],
         axis=1
-    )
+    ).T
 
 
 def get_null_stats(df):
@@ -290,48 +292,52 @@ def is_feature_not_present_across_class(feature_size_by_class_df):
     return counts.nunique() != 1
 
 
-def is_feature_skewed_across_class(feature_size_by_class_df, threshold=.99):
+def is_feature_overweighted_towards_class(feature_size_by_class_df,
+                                          threshold=.99,
+                                          feature_level=True):
     """
-    Helper function to see whether all values in `feature_size_by_class_df.ratio` 
-    are below `threshold`. `feature_size_by_class_df` is presumed to be a result 
-    from the function `get_feature_size_by_class`.
-
-    The intended use case is for seeing whether feature has a certain
-    value(s) that very strongly point towards a particular class value,
-    as, if this is true, feature is either highly predictive or leaking
-    data.
-
-    Feature in `feature_size_by_class_df` should be discrete, i.e. of a finite set 
-    of values.
+    The intended use case is for seeing whether a categorical feature very 
+    strongly points towards a particular class value, as, if this is true, 
+    the feature is either highly predictive or leaking data.
 
     Parameters
     ----------
 
     feature_size_by_class_df : pandas.DataFrame
-        DataFrame on which this function will operate, which must have at least
-        two row-index levels.
+        DataFrame on which this function will operate. This is presumed to 
+        be a result from the function `get_feature_size_by_class`. Additionally, 
+        the feature represented in `feature_size_by_class_df` should be discrete, 
+        i.e. comes from a finite set of values.
 
-    threshold: float, with value between 0 and 1 (default=.99)
+    threshold : float, with value between 0 and 1 (default=.99)
         Proportion of rows allowed that are allowed to be taken up by single
         `class_col` & `feature` value grouping.
+
+    feature_level : bool (default=True)
+        Whether to perform at the feature level, or feature-value level.
 
     Return
     ------
 
     `bool` indicating whether all class values see all feature values.
     """
-    return ((
-        feature_size_by_class_df.ratio >= threshold
-    ).sum() > 0).all()
+    ratios = feature_size_by_class_df.unstack(0).ratio
+
+    if feature_level:
+        booleans = ratios.sum() >= threshold
+    else:
+        booleans = ratios >= threshold
+
+    return booleans.any()
 
 
-def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
+def get_data_leak_cols_cat(df, class_col, threshold=.99, dtypes=None,
                            drop_for_analysis=None, join_for_analysis=None,
-                           return_style="dict"):
+                           overweight_level="feature", return_style="dict"):
     """
-    Function to assess whether categorical features in `df` are possibly
-    leaking data. This is achieved through through determining whether, 
-    for a given feature:
+    Function to assess whether features (categorical) in `df` are possibly 
+    leaking data. This is achieved through through determining whether, for 
+    a given feature:
 
         - every class value sees the same number of feature values
         - whether a disproportionate number of rows correspond to a certain 
@@ -341,18 +347,19 @@ def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
     ----------
 
     df : pandas.DataFrame
-        DataFrame on which this function will operate.
+        DataFrame on which this function will operate - features should be 
+        categorical.
 
     class_col: str
         Name of class column.
 
     threshold : float, with value between 0 and 1 (default=.99)
         Proportion of rows allowed that are allowed to be taken up by single
-        `class_col` & `feature` value grouping.
+        `class_col` & `feature` or `class_col` & `feature`-value grouping.
 
     dtypes : type, or list[type] (default=None)
-        Specific column type(s) to limit analysis to. Defaults to all types except
-        `float` if no value passed.
+        Specific column type(s) to limit analysis to. Defaults to all types 
+        except `float` if no value passed.
 
     drop_for_analysis : str or list (default=None)
         Column name(s) to exclude from consideration.
@@ -361,16 +368,21 @@ def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
         Additional data to be joined in to `df; e.g. if separate `X` and `y`.
         `class_col` will be looked up post-join, if there is a join.
 
+    overweight_level : str (default="feature")
+        Determines whether to check for `threshold` exceedance. If given value 
+        "feature" will check at the feature level, and otherwise will check 
+        at the feature-value level.
+
     return_style : str (default="list")
-        If "list" is passed, a single `list` will be returned that contains the names 
-        of both features for which:
+        If "list" is passed, a single `list` will be returned that contains 
+        the names of both features for which:
 
-            - not all class values see all feature values ("missing")
-            - there is a disproportionate concentration of a certain class value at a 
-              certain feature value ("skewed")
+            - not all class values see all feature values ("missing_vals")
+            - there is a disproportionate concentration of a certain class 
+              value at a certain feature or feature value ("overweight")
 
-        Otherwise, these two groups will be returned separately, each under their own 
-        key in a `dict`.
+        Otherwise, these two groups will be returned separately, each under 
+        their own key in a `dict`.
 
     Return
     ------
@@ -391,14 +403,23 @@ def get_data_leak_cols_cls(df, class_col, threshold=.99, dtypes=None,
         df = df.join(join_for_analysis)
 
     feature_sizes = get_feature_sizes_dict(df, class_col, normalize=True)
-    filter_feature_data = lambda func, *args: [
-                            k for k, v in feature_sizes.items() if func(v, *args)
+
+    filter_feature_data = lambda func, *args, **kwargs: [
+                            k for k, v in feature_sizes.items()
+                            if func(v, *args, **kwargs)
                         ]
 
-    missing_cols = filter_feature_data(is_feature_not_present_across_class)
-    skewed_cols = filter_feature_data(is_feature_skewed_across_class, threshold)
+    cols_missing_vals = filter_feature_data(
+                                is_feature_not_present_across_class
+                                )
+    
+    cols_over_threshold = filter_feature_data(
+                                is_feature_overweighted_towards_class, 
+                                threshold,
+                                feature_level=overweight_level == "feature"
+                                )
 
     if return_style == "list":
-        return list(set(missing_cols) | set(skewed_cols))
+        return list(set(cols_missing_vals) | set(cols_over_threshold))
     else:
-        return {"missing": missing_cols, "skewed": skewed_cols}
+        return {"missing_vals": cols_missing_vals, "overweight": cols_over_threshold}
