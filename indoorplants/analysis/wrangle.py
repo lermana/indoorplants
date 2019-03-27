@@ -117,7 +117,8 @@ def get_class_cnts_by_many_features_nulls(df, class_col, features_list,
             get_class_cnts_by_feature_null(df, class_col, f, normalize=normalize)
             for f in features_list
         ],
-        axis=1
+        axis=1,
+        sort=True
     ).T
 
 
@@ -443,7 +444,7 @@ def get_data_leak_cols_cat(df, class_col, threshold=.99, dtypes=None,
 
 def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                             drop_for_analysis=None, join_for_analysis=None,
-                            return_style="dict", return_info="columns"):
+                            return_style="dict"):
     """
     Function to assess whether features (continuous) in `df` are possibly 
     leaking data. This is achieved in a simple fashion, through considering
@@ -492,16 +493,10 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
         Otherwise, a single `list` will be returned that contains all 
         column names.
 
-    return_info : str (default="columns")
-        Specifies what information to return. If "columns", returns only the 
-        names of columns that could be leaking information. Otherwise, returns 
-        `pd.DataFrame` with information for each calculation.
-
     Return
     ------
 
-    Columns with potential data leak issues, formatted as per `return_style` 
-    and `return_info`.
+    Columns with potential data leak issues, formatted as per `return_style`.
     """
     if drop_for_analysis:
         df = df.drop(drop_for_analysis, axis=1)
@@ -517,20 +512,19 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                                                 df.columns
                                                 )
 
-    missing_vals = null_counts[null_counts.isnull()]
+    missing_vals = null_counts[null_counts.isnull()
+                              ].dropna(
+                              ).index.levels[0]
 
     ratios = null_counts.groupby(level=0).std()
-    over_threshold = ratios[ratios > threshold]
-
-    if return_info == "columns":
-        missing = missing.index
-        over_threshold = over_threshold.index
+    over_threshold = ratios[ratios > threshold
+                           ].index
 
     if return_style == "dict":
         return {
-            "missing_vals": missing_vals,
-            "over_threshold": over_threshold
-        }
+                "missing_vals": list(missing_vals),
+                "over_threshold": list(over_threshold)
+            }
 
     else:
         return list(
