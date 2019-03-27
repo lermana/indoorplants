@@ -509,7 +509,7 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
     null_counts = get_class_cnts_by_many_features_nulls(
                                                 df,
                                                 class_col,
-                                                df.columns
+                                                filter(lambda c: c != class_col, df.columns)
                                                 )
 
     missing_vals = null_counts[null_counts.isnull()
