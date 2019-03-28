@@ -1,5 +1,13 @@
 import pandas as pd
 
+
+def get_clean_df_index(df):
+    if isinstance(df.index, pd.core.index.MultiIndex):
+        return df.index.remove_unused_levels()
+    else:
+        return df.index
+
+
 def get_feature_size_by_class(df, class_col, features, normalize=True):
     """
     Given pandas.DataFrame, class column name, and feature column
@@ -175,7 +183,7 @@ def get_cols_over_x_pcnt_null(df, x=.99, exclude=None):
 
         nulls = nulls.loc[~nulls.index.isin(exclude)]
 
-    return nulls[nulls.ratio > x].index
+    return get_clean_df_index(nulls[nulls.ratio > x])
 
 
 def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None):
@@ -253,7 +261,7 @@ def get_cols_ratio_equal_val(df, val, ratio=1):
     to a particular value.
     """
     check = (df == val).sum()
-    return check[check == (ratio * len(df))].index
+    return get_clean_df_index(check[check == (ratio * len(df))])
 
 
 def is_feature_not_present_across_class(feature_size_by_class_df):
@@ -512,13 +520,16 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                                                 filter(lambda c: c != class_col, df.columns)
                                                 )
 
-    missing_vals = null_counts[null_counts.isnull()
-                              ].dropna(
-                              ).index.levels[0]
+    missing_vals = get_clean_df_index(
+                        null_counts[null_counts.isnull()
+                                   ].dropna()
+                            ).levels[0]
 
     ratios = null_counts.groupby(level=0).std()
-    over_threshold = ratios[ratios > threshold
-                           ].index
+
+    over_threshold = get_clean_df_index(
+                        ratios[ratios > threshold]
+                    )
 
     if return_style == "dict":
         return {
