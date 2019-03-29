@@ -530,10 +530,7 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                             ).levels[0]
 
     ratios = null_counts.groupby(level=0).std()
-
-    over_threshold = get_clean_df_index(
-                        ratios[ratios > threshold]
-                    )
+    over_threshold = ratios[ratios > threshold].dropna().index
 
     if return_style == "dict":
         return {
