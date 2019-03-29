@@ -261,7 +261,7 @@ def get_cols_ratio_equal_val(df, val, ratio=1):
     to a particular value.
     """
     check = (df == val).sum()
-    return get_clean_df_index(check[check == (ratio * len(df))])
+    return check[check == (ratio * len(df))]
 
 
 def is_feature_not_present_across_class(feature_size_by_class_df):
@@ -298,7 +298,11 @@ def is_feature_not_present_across_class(feature_size_by_class_df):
     """
     index_vals = feature_size_by_class_df.reset_index().iloc[:, :2]
     counts = index_vals.groupby(index_vals.columns[0]).size()
-    return counts.nunique() != 1
+    return (
+        counts.nunique() != 1  
+            or counts.index.nunique() != 
+               feature_size_by_class_df.index.levels[0].nunique()
+            )
 
 
 def is_feature_overweighted_towards_class(feature_size_by_class_df,
