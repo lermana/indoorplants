@@ -454,6 +454,42 @@ def get_data_leak_cols_cat(df, class_col, threshold=.99, dtypes=None,
                 )
 
 
+def get_stats_on_features_missing_around_class(null_counts, names_only=True):
+    # ok need a func here to handle the first part of `get_data_leak_cols_cont`
+    # need a good docstring here
+    # need option to get data or just column names
+    # this function needs a good name
+    missing_vals = null_counts[null_counts.isnull().any(axis=1)
+                              ].dropna(how="all")
+
+    if names_only:
+        missing_vals = list(
+                        get_clean_df_index(missing_vals
+                            ).levels[0]
+                        )
+
+    return missing_vals
+
+
+def get_ratios(null_counts, names_only=True):
+    # fuck this thing is shit
+        null_counts.index = null_counts.index.rename(["feature", "is_null"])
+        null_counts = null_counts.reset_index()
+
+        null_counts = null_counts.loc[
+                            (~null_counts.feature.isin(missing_vals))
+                             & (null_counts.notnull().all(axis=1))
+                             ]
+
+        ratios = null_counts.groupby("feature").std()
+
+        over_threshold = list(
+                            ratios[ratios > threshold
+                                  ].dropna(
+                                  ).index
+                            )   
+
+
 def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                             drop_for_analysis=None, join_for_analysis=None,
                             return_style="dict"):
@@ -528,20 +564,8 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                                         filter(lambda c: c != class_col, df.columns)
                                         )
 
-    missing_vals = list(
-                    get_clean_df_index(
-                        null_counts[null_counts.isnull().any(axis=1)
-                                   ].dropna(how="all")
-                            ).levels[0]
-                    )
+    missing_vals = get_stats_on_features_missing_around_class(null_counts)
 
-    ratios = null_counts[~null_counts.index.isin(missing_vals, level=0)
-                        ].groupby(level=0
-                        ).std()
-
-    over_threshold = list(
-                        ratios[ratios > threshold].index
-                        )
 
     if return_style == "dict":
         return {
