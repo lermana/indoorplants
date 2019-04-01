@@ -468,6 +468,10 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
           `null` and `not-null` counts at a given class value, where 
           disproportionality is set using `threshold`
 
+    Note that these two checks are mutually exclusive, and also that 
+    features whose values are not missing at all will be excluded from the
+    results.
+
     Parameters
     ----------
 
@@ -519,18 +523,21 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
         df = df.join(join_for_analysis)
 
     null_counts = get_class_cnts_by_many_features_nulls(
-                                                df,
-                                                class_col,
-                                                filter(lambda c: c != class_col, df.columns)
-                                                )
+                                        df,
+                                        class_col,
+                                        filter(lambda c: c != class_col, df.columns)
+                                        )
 
     missing_vals = get_clean_df_index(
-                        null_counts[null_counts.isnull()
-                                   ].dropna()
+                        null_counts[null_counts.isnull().any(axis=1)
+                                   ].dropna(how="all")
                             ).levels[0]
 
-    ratios = null_counts.groupby(level=0).std()
-    over_threshold = ratios[ratios > threshold].dropna().index
+    ratios = null_counts.dropna(how="any"
+                       ).groupby(level=0
+                       ).std()
+
+    over_threshold = ratios[ratios > threshold].index
 
     if return_style == "dict":
         return {
