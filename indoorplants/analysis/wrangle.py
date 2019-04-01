@@ -528,25 +528,26 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
                                         filter(lambda c: c != class_col, df.columns)
                                         )
 
-    missing_vals = get_clean_df_index(
+    missing_vals = list(
+                    get_clean_df_index(
                         null_counts[null_counts.isnull().any(axis=1)
                                    ].dropna(how="all")
                             ).levels[0]
+                    )
 
-    ratios = null_counts.dropna(how="any"
-                       ).groupby(level=0
-                       ).std()
+    ratios = null_counts[~null_counts.index.isin(missing_vals, level=0)
+                        ].groupby(level=0
+                        ).std()
 
-    over_threshold = ratios[ratios > threshold].index
+    over_threshold = list(
+                        ratios[ratios > threshold].index
+                        )
 
     if return_style == "dict":
         return {
-                "missing_vals": list(missing_vals),
-                "over_threshold": list(over_threshold)
+                "missing_vals": missing_vals,
+                "over_threshold": over_threshold
             }
 
     else:
-        return list(
-                    set(missing_vals)
-                  | set(over_threshold)
-                )
+        return missing_vals + over_threshold
