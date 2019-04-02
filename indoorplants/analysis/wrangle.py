@@ -510,7 +510,7 @@ def get_null_count_spreads(null_counts, exclude=None):
     ------
 
     `pd.DataFrame` with features as indices, class values as columns, and 
-    `not-null` absolute differences (as described above) as values. 
+    `not-null` absolute differences (as described above) as values.
     """
     if exclude is None:
         exclude = []
@@ -523,10 +523,14 @@ def get_null_count_spreads(null_counts, exclude=None):
                           & (null_counts.notnull().all(axis=1))
                          ]
 
-    return null_counts.groupby("feature"
-                     ).diff(
-                     ).dropna(
-                     ).abs()
+    to_return = null_counts.groupby("feature"
+                          ).diff(
+                          ).set_index(null_counts.feature
+                          ).dropna(
+                          ).abs(
+                          ).iloc[0]
+
+    to_return.columns = ["spread"]
 
 
 def get_over_threshold_columns(spreads, threshold, names_only=True):
@@ -645,10 +649,10 @@ def get_data_leak_cols_via_nulls(df, class_col, threshold=.5, dtypes=float,
     missing_vals = get_missing_around_class_stats(null_counts)
 
     over_threshold = get_over_threshold_columns(
-                        null_counts=get_null_count_spreads(
-                                            null_counts, 
-                                            exclude=missing_vals
-                                            ),
+                        spreads=get_null_count_spreads(
+                                        null_counts=null_counts, 
+                                        exclude=missing_vals
+                                        ),
                         threshold=threshold
                         )
 
