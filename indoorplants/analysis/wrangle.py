@@ -344,9 +344,10 @@ def is_feature_overweighted_towards_class(feature_size_by_class_df,
     return booleans.any()
 
 
-def get_data_leak_cols_cat(df, class_col, threshold=.99, dtypes=None,
-                           drop_for_analysis=None, join_for_analysis=None,
-                           return_style="dict"):
+def get_data_leak_cols_via_cls_counts(df, class_col, threshold=.99,
+                                      dtypes=None, drop_for_analysis=None,
+                                      join_for_analysis=None,
+                                      return_style="dict"):
     """
     Function to assess whether features (categorical) in `df` are possibly 
     leaking data. This is achieved through through determining whether, for 
@@ -454,11 +455,29 @@ def get_data_leak_cols_cat(df, class_col, threshold=.99, dtypes=None,
                 )
 
 
-def get_stats_on_features_missing_around_class(null_counts, names_only=True):
-    # ok need a func here to handle the first part of `get_data_leak_cols_cont`
-    # need a good docstring here
-    # need option to get data or just column names
-    # this function needs a good name
+def get_missing_around_class_stats(null_counts, names_only=True):
+    """
+    Given results from `get_class_cnts_by_many_features_nulls`, get
+    features whose values are entirely `null` at a given class 
+    value.
+
+    Parameters
+    ----------
+
+    null_counts : pandas.DataFrame
+        Results from `get_class_cnts_by_many_features_nulls`.
+
+    names_only : bool (default=True)
+        Whether to return just names of features who are `null` for 
+        a given class value (True) or whether to return full `null_counts` 
+        table for these features (False).
+
+    Return
+    ------
+
+    Either `pd.DataFrame` or `list`, representing `null_counts` filtered 
+    to features that are entirely `null` at a given class value.
+    """
     missing_vals = null_counts[null_counts.isnull().any(axis=1)
                               ].dropna(how="all")
 
@@ -471,38 +490,96 @@ def get_stats_on_features_missing_around_class(null_counts, names_only=True):
     return missing_vals
 
 
-def get_ratios(null_counts, names_only=True):
-    # fuck this thing is shit
-        null_counts.index = null_counts.index.rename(["feature", "is_null"])
-        null_counts = null_counts.reset_index()
-
-        null_counts = null_counts.loc[
-                            (~null_counts.feature.isin(missing_vals))
-                             & (null_counts.notnull().all(axis=1))
-                             ]
-
-        ratios = null_counts.groupby("feature").std()
-
-        over_threshold = list(
-                            ratios[ratios > threshold
-                                  ].dropna(
-                                  ).index
-                            )   
-
-
-def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
-                            drop_for_analysis=None, join_for_analysis=None,
-                            return_style="dict"):
+def get_null_count_spreads(null_counts, exclude=None):
     """
-    Function to assess whether features (continuous) in `df` are possibly 
-    leaking data. This is achieved in a simple fashion, through considering
-    the presence of `null` values and how that varies across different class
-    values. More specically, this function provides:
+    Given results from `get_class_cnts_by_many_features_nulls`, get absolute 
+    values of differences, for each class value, between the proportion of rows 
+    taking that class value when a given feature is `null` and when a given 
+    feature is `not-null`.
+
+    Parameters
+    ----------
+
+    null_counts : pandas.DataFrame
+        Results from `get_class_cnts_by_many_features_nulls`.
+
+    exclude : list-like (default=None)
+        Features to remove from returned results.
+
+    Return
+    ------
+
+    `pd.DataFrame` with features as indices, class values as columns, and 
+    `not-null` absolute differences (as described above) as values. 
+    """
+    if exclude is None:
+        exclude = []
+
+    null_counts.index = null_counts.index.rename(["feature", "is_null"])
+    null_counts = null_counts.reset_index()
+
+    null_counts = null_counts.loc[
+                            (~null_counts.feature.isin(exclude))
+                          & (null_counts.notnull().all(axis=1))
+                         ]
+
+    return null_counts.groupby("feature"
+                     ).diff(
+                     ).dropna(
+                     ).abs()
+
+
+def get_over_threshold_columns(spreads, threshold, names_only=True):
+    """
+    Given results from `get_null_count_spreads`, get features whose 
+    spreads exceed `threshold`.
+
+    Parameters
+    ----------
+
+    spreads : pandas.DataFrame
+        Results from `get_null_count_spreads`.
+
+    threshold : float, with value between 0 and 1 (default=.99)
+        Measure of maximum acceptibility for spread between the proportion 
+        of rows with a given class value when a given feature is `null`, vs. 
+        when it's `not-null`. Spread is the difference between these two 
+        proportions.
+
+    names_only : bool (default=True)
+        Whether to return just names of features that exceed `threshold`, or 
+        the `get_null_count_spreads` results for these features.
+
+    Return
+    ------
+
+    Either `pd.DataFrame` or `list`.
+    """
+    over_threshold = spreads[spreads > threshold].dropna()
+
+    if names_only:
+        spreads = list(
+                    spreads[spreads > threshold
+                          ].dropna(
+                          ).index
+                )
+
+    return spreads
+
+
+def get_data_leak_cols_via_nulls(df, class_col, threshold=.5, dtypes=float,
+                                 drop_for_analysis=None, join_for_analysis=None,
+                                 return_style="dict"):
+    """
+    Function to assess whether features in `df` are possibly leaking data. 
+    This is achieved in a simple fashion, through considering the presence of 
+    `null` values and how that varies across different class values. More 
+    specically, this function provides:
 
         - whether a feature is entirely `null` over a certain class value
-        - whether there's a disproportionately high dispersion between the 
-          `null` and `not-null` counts at a given class value, where 
-          disproportionality is set using `threshold`
+        - whether there's a unreasonably high spread between the `null` and 
+          `not-null` counts at a given class value, where the maximim spread 
+          considered reasonable is set using `threshold`
 
     Note that these two checks are mutually exclusive, and also that 
     features whose values are not missing at all will be excluded from the
@@ -513,16 +590,16 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
 
     df : pandas.DataFrame
         DataFrame on which this function will operate. These features can 
-        actually be categorical or continuous, but this function was conceived 
-        as a complement to `get_data_leak_cols_cat` that would support the 
-        analysis of continuous features.
+        be categorical or continuous.
 
-    class_col: str
+    class_col : str
         Name of class column.
 
     threshold : float, with value between 0 and 1 (default=.99)
-        Proportion of rows allowed that are allowed to be taken up by single
-        `class_col` & `feature` or `class_col` & `feature`-value grouping.
+        Measure of maximum acceptibility for spread between the proportion 
+        of rows with a given class value when a given feature is `null`, vs. 
+        when it's `not-null`. Spread is the difference between these two 
+        proportions.
 
     dtypes : type, or list[type] (default=float)
         Specific column type(s) to limit analysis to.
@@ -540,7 +617,8 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
 
             - features for which one or more class values see only `null`
               ("missing_vals")
-            - features for which  ("over_threshold")
+            - features for which spread, as defined above, exceeds `threshold` 
+              ("over_threshold")
 
         Otherwise, a single `list` will be returned that contains all 
         column names.
@@ -559,13 +637,20 @@ def get_data_leak_cols_cont(df, class_col, threshold=.5, dtypes=float,
         df = df.join(join_for_analysis)
 
     null_counts = get_class_cnts_by_many_features_nulls(
-                                        df,
-                                        class_col,
-                                        filter(lambda c: c != class_col, df.columns)
-                                        )
+                                df,
+                                class_col,
+                                filter(lambda c: c != class_col, df.columns)
+                                )
 
-    missing_vals = get_stats_on_features_missing_around_class(null_counts)
+    missing_vals = get_missing_around_class_stats(null_counts)
 
+    over_threshold = get_over_threshold_columns(
+                        null_counts=get_null_count_spreads(
+                                            null_counts, 
+                                            exclude=missing_vals
+                                            ),
+                        threshold=threshold
+                        )
 
     if return_style == "dict":
         return {
