@@ -528,9 +528,10 @@ def get_null_count_spreads(null_counts, exclude=None):
                           ).set_index(null_counts.feature
                           ).dropna(
                           ).abs(
-                          ).iloc[0]
+                          ).iloc[:, 0]
 
     to_return.columns = ["spread"]
+    return to_return
 
 
 def get_over_threshold_columns(spreads, threshold, names_only=True):
