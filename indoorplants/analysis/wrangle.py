@@ -8,7 +8,7 @@ def get_clean_df_index(df):
         return df.index
 
 
-def get_feature_size_by_class(df, class_col, features, normalize=True):
+def get_feature_size_by_class(df, class_col, features, normalize="class"):
     """
     Given pandas.DataFrame, class column name, and feature column
     name, return:
@@ -31,6 +31,11 @@ def get_feature_size_by_class(df, class_col, features, normalize=True):
     features : str or list
         Column name(s) for the feature.
 
+    normalize : str, "class" or "all" or None (default="class")
+        Whether to normalize counts. "class" means normalize counts within a 
+        class value by the total counts in that group. "all" means normalize 
+        by the length of `df`. `None` means do not normalize.
+
     Return
     ------
 
@@ -49,14 +54,34 @@ def get_feature_size_by_class(df, class_col, features, normalize=True):
                   ).rename("cnt"
                   ).to_frame()
 
-    if normalize:
+    if normalize == "all":
         to_return = (to_return / len(df)
                     ).rename(columns={"cnt": "ratio"})
+
+    elif normalize == "class":
+        denominators = to_return.groupby(level=0
+                               ).sum(
+                               ).rename(columns={"cnt": "cnt_cls_val"}
+                               ).reset_index()
+
+        to_return = to_return.reset_index(
+                            ).merge(denominators, on=class_col
+                            ).set_index(to_group_by)
+
+        to_return = to_return.cnt.divide(to_return.cnt_cls_val
+                                ).rename("ratio"
+                                ).to_frame()
+
+    elif normalize is None:
+        pass
+
+    else:
+        raise ValueError("Improper value passed for `normalize`.")
 
     return to_return
 
 
-def get_feature_sizes_dict(df, class_col, normalize=True):
+def get_feature_sizes_dict(df, class_col, normalize="class"):
     """
     Helper function to get size of each feature-value & class-value set,
     with `class_col` excluded from feature set to be examined.
@@ -425,7 +450,7 @@ def get_data_leak_cols_via_cls_counts(df, class_col, threshold=.99,
     if join_for_analysis is not None:
         df = df.join(join_for_analysis)
 
-    feature_sizes = get_feature_sizes_dict(df, class_col, normalize=True)
+    feature_sizes = get_feature_sizes_dict(df, class_col, normalize="class")
 
     filter_feature_data = lambda func, *args, **kwargs: [
                             k for k, v in feature_sizes.items()
