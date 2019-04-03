@@ -15,7 +15,7 @@ def get_feature_size_by_class(df, class_col, features, normalize=True):
 
         - pd.crosstab(df.class_col, df.feature).stack()
 
-    Works differently from `pd.crosstab` if multiple features passed.
+    Works differently from `pandas.crosstab` if multiple features passed.
     Note that this function makes the most sense for categorical 
     features.
 
@@ -92,7 +92,7 @@ def get_class_cnts_by_feature_null(df, class_col, feature, normalize=True):
         Whether or not to normalize class counts by number of rows in 
         the respective feature is: [null / non-null] query. I.e. the
         value for `normalize` is passed straight to the `normalize`
-        kwarg in `pd.Series.value_counts`, which is called on data that
+        kwarg in `pandas.Series.value_counts`, which is called on data that
         is filtered for either `df[feature].isnull()` of `df[feature].notnull()`.
 
     Return
@@ -153,7 +153,7 @@ def get_null_stats(df):
     return nulls.sort_values("ratio", ascending=False)
 
 
-def get_cols_over_x_pcnt_null(df, x=.99, exclude=None):
+def get_cols_over_x_pcnt_null(df, x=.99, exclude=None, names_only=True):
     """
     Function that will return all columns in `df` with over a certan 
     proportion of missing values.
@@ -170,10 +170,15 @@ def get_cols_over_x_pcnt_null(df, x=.99, exclude=None):
     exclude : str or list (default=None)
         Column name(s) to exclude from results.
 
+    names_only : bool (default=True)
+        Whether to return just column names (True) or whether to return 
+        `get_null_stats` results for these columns (False).
+
     Return
     ------
 
-    pandas.Index of columns with over `x` proportion missing values.
+    `pandas.Index` of columns with over `x` proportion missing values, or 
+    `pandas.DataFrame` of `null` ratios.
     """
     nulls = get_null_stats(df)
 
@@ -183,7 +188,10 @@ def get_cols_over_x_pcnt_null(df, x=.99, exclude=None):
 
         nulls = nulls.loc[~nulls.index.isin(exclude)]
 
-    return get_clean_df_index(nulls[nulls.ratio > x])
+    if names_only:
+        return get_clean_df_index(nulls[nulls.ratio > x])
+    else:
+        return nulls[nulls.ratio > x]
 
 
 def remove_cols_over_x_pcnt_null(df, x=.99, exclude=None):
@@ -475,7 +483,7 @@ def get_missing_around_class_stats(null_counts, names_only=True):
     Return
     ------
 
-    Either `pd.DataFrame` or `list`, representing `null_counts` filtered 
+    Either `pandas.DataFrame` or `list`, representing `null_counts` filtered 
     to features that are entirely `null` at a given class value.
     """
     missing_vals = null_counts[null_counts.isnull().any(axis=1)
@@ -509,7 +517,7 @@ def get_null_count_spreads(null_counts, exclude=None):
     Return
     ------
 
-    `pd.DataFrame` with features as indices, class values as columns, and 
+    `pandas.DataFrame` with features as indices, class values as columns, and 
     `not-null` absolute differences (as described above) as values.
     """
     if exclude is None:
@@ -558,7 +566,7 @@ def get_over_threshold_columns(spreads, threshold, names_only=True):
     Return
     ------
 
-    Either `pd.DataFrame` or `list`.
+    Either `pandas.DataFrame` or `list`.
     """
     over_threshold = spreads[spreads > threshold].dropna()
 
