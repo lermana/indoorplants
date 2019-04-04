@@ -1,11 +1,16 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
-setup(name='indoorplants',
-      version='1.0',
-      description='tools for data analysis and model validation',
-      author='Abe Lerman',
-      url='https://github.com/lermana/indoorplants',
-      packages=["indoorplants",
-                "indoorplants.analysis",
-                "indoorplants.validation"]
-     )
+setup(
+	name="indoorplants",
+    version="1.0",
+    description="Tools for data analysis and model validation",
+    author="Abe Lerman",
+    url="https://github.com/lermana/indoorplants",
+    packages=find_packages(),
+    install_requires=["numpy",
+                      "scipy",
+                      "pandas",
+                      "sklearn",
+                      "matplotlib",
+                      "requests"]
+    )
