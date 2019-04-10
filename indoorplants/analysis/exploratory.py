@@ -1,6 +1,8 @@
-import matplotlib.pyplot as plt
+import numpy as np
 import scipy.stats as sp
+import matplotlib.pyplot as plt
 
+from . import features
 
 def qq_plot(series, figsize=(11, 8)):
     """compare given series to Normal distirbution
@@ -232,3 +234,46 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
         return ax, bins
     else:
         return ax
+
+
+def center_scale_with_peak_trough(series, plot_troughs=True, plot_peaks=False,
+                                  bins=100, center_scale_plot_kwargs=None, 
+                                  trough_plt_kwargs=None, peak_plt_kwargs=None):
+    """
+    Produces `center_scale_plot` but with the option to add peak and / or trough
+    lines to the resulting histogram. See `features.find_frequency_peaks_and_troughs` 
+    for more information on peak and trough calculation.
+    """
+    def plot_optima(optima, **kwargs):
+        for opt in np.mean(optima, axis=1):
+            
+            if "linestyle" not in kwargs:
+                kwargs["linestyle"] = "--"
+            
+            if "linewidth" not in kwargs:
+                kwargs["linewidth"] = 1
+
+            ax.axvline(opt, 0, y_max, **kwargs)
+    
+    if center_scale_plot_kwargs is None:
+        center_scale_plot_kwargs = {"center_func": np.mean,
+                                    "scale_func": np.std}
+    
+    if trough_plt_kwargs is None:
+        trough_plt_kwargs = {}
+        
+    if peak_plt_kwargs is None:
+        peak_plt_kwargs = {}
+    
+    ax = center_scale_plot(series, bins=bins, **center_scale_plot_kwargs)
+    peaks, troughs = features.find_frequency_peaks_and_troughs(series, bins=bins)
+    
+    y_max = ax.get_ybound()[1]
+    
+    if plot_troughs:
+        plot_optima(troughs, **trough_plt_kwargs)
+    
+    if plot_peaks:
+        plot_optima(peaks, **peak_plt_kwargs)
+    
+    return ax

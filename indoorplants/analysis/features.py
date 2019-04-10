@@ -121,7 +121,7 @@ def euclidean_squared_distances(feature_one, feature_two, **kwargs):
 def get_sign_diffs(array_like):
     """
     Given `array_like` (`np.array` or `pd.Series`), return an 
-    array noting the change in direction from `array_like[row_index]`
+    array noting the change in direction from `array_like[row_index]` 
     to `array_like[row_index + 1]` for each row index in `array_like`.
     """
     return np.diff(np.sign(np.diff(array_like)))
@@ -132,80 +132,63 @@ def get_optima_indices_simple(sign_diffs_arr, sign_change_val):
     Get inidices for peaks or troughs in passed `sign_diffs_arr`. Note that 
     `sign_change_val` should be -2 for peaks or 2 for troughs.
     """
-    return np.fromiter(
-        (index[0] for index, x in np.ndenumerate(sign_diffs_arr) if x == sign_change_val),
-        dtype=np.int32
-        )
+    return np.flatnonzero(sign_diffs_arr == sign_change_val) + 1
 
 
 def get_peak_and_trough_indices_simple(array_like):
     """
-    Get indices of peaks and troughs in `array_like` using simple methodology
-    of looking for changes in direction. This method will likely benefit from
+    Get indices of peaks and troughs in `array_like` using simple methodology 
+    of looking for changes in direction. This method will likely benefit from 
     smoothing if data is "noisey."
     """
-
     sign_diffs_arr = get_sign_diffs(array_like)
 
     return (
-        get_optima_indices_simple(sign_diffs_arr, -2), 
+        get_optima_indices_simple(sign_diffs_arr, -2),
         get_optima_indices_simple(sign_diffs_arr, 2)
         )
 
 
-def find_frequency_peaks_and_troughs(series=None, hist=None, bin_edges=None, num_bins=100):
+def get_bin_edge_inds_from_hist_inds(indices, bin_edges):
     """
-    Leverage functionality in `get_peak_and_trough_indices_simple` on histogram data. If not
-    passed (in `hist` and `bin_edges`), histogram data is generated with `num_bins` bins.
+    Given an array of indices (i.e. integer values - the was built with  
+    the results of `get_optima_indices_simple` in mind) and an array of 
+    histogram bin edges (assumed to be the second result of `np.histogram`) 
+    return a `[num_bins, 2]` array, such that `bin_edges` is re-represented 
+    to provide exactly two boundaries, with each pair corresponding to exactly 
+    one value in `indices`. 
+    """
+    return bin_edges[np.vstack((indices, indices + 1)).T]
+
+
+def find_frequency_peaks_and_troughs(series=None, hist=None, 
+                                     bin_edges=None, bins=100):
+    """
+    Leverage functionality in `get_peak_and_trough_indices_simple` on 
+    histogram data. If not passed (in `hist` and `bin_edges`), histogram 
+    data is generated with `num_bins` bins.
     """
     if hist is None or bin_edges is None:
-        hist, bin_edges = np.histogram(series, bins=num_bins)
+        hist, bin_edges = np.histogram(series, bins=bins)
 
-    peak_inds, trough_inds = get_peak_and_trough_indices_simple(hist)
-    return bin_edges[peak_inds], bin_edges[trough_inds]
-
-
-def get_optima_vals_simple(vals_arr, sign_change_val, sign_diffs_arr=None):
-    """
-    Return array of values of specified optima type in passed `values_arr`. `sign_change_val`
-    will determine whether peak or trough values are returned. Pass `sign_diffs_arr` if you
-    already have one and do not wish to recalculate.
-
-    See `get_optima_indices_simple` for more information.
-    """
-    if not sign_diffs_arr:
-        sign_diffs_arr = get_sign_diffs(vals_arr)
-
-    return vals_arr[get_optima_indices_simple(sign_diffs_arr, sign_change_val)]
-
-
-def get_peak_vals_simple(array_like, sign_diffs_arr=None):
-    """
-    Return peak values for passed `array_like`.
-
-    See `get_optima_vals_simple` for more information.
-    """
-    return get_optima_vals_simple(array_like, -2, sign_diffs_arr)
-
-
-def get_trough_vals_simple(array_like, sign_diffs_arr=None):
-    """
-    Return trough values for passed `array_like`.
-
-    See `get_optima_vals_simple` for more information.
-    """
-    return get_optima_vals_simple(array_like, 2, sign_diffs_arr)
-
-
-def get_peak_and_trough_vals_simple(array_like):
-    """
-    Return tuple: `(peak_values, trough_values)` for passed `array_like`.
-
-    See `get_peak_vals_simple` and `get_trough_vals_simple` for more information.
-    """
-    sign_diffs_arr = get_sign_diffs(array_like)
+    hist_peak_inds, hist_trough_inds = get_peak_and_trough_indices_simple(hist)
 
     return (
-        get_peak_vals_simple(array_like, sign_diffs_arr), 
-        get_trough_vals_simple(array_like, sign_diffs_arr)
+        get_bin_edge_inds_from_hist_inds(hist_peak_inds, bin_edges),
+        get_bin_edge_inds_from_hist_inds(hist_trough_inds, bin_edges)
         )
+
+
+def get_series_in_bin_mask(series, bin_bounds):
+    return (series > bin_bounds[0]) & (series < bin_bounds[1])
+
+
+def fliter_series_to_in_bin(series, bin_bounds):
+    return series[get_series_in_bin_mask(series, bin_bounds)]
+
+
+def cnt_series_in_bin(series, bin_bounds, normalize=True):
+    cnt = get_series_in_bin_mask(series, bin_bounds).sum()
+    if normalize:
+        cnt = cnt / len(series)
+    return cnt
