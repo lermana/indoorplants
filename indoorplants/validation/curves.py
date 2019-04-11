@@ -11,9 +11,10 @@ from indoorplants.validation import crossvalidate, \
                                     boundaries
 
 
-def validation_curve(X, y, score, model_type, param_name, 
-                     param_range, other_params={}, splits=5, 
-                     scale_obj=None, semilog=False, figsize=(11, 8)):
+def validation_curve(X, y, score, model_type, param_name,
+                     param_range, other_params={},
+                     semilog=False, figsize=(11, 8),
+                     **cv_engine_kwargs):
     """
     Cross validates `model_type` across passed parameters and
     plots results. Please see _validate_param_range for more
@@ -22,10 +23,12 @@ def validation_curve(X, y, score, model_type, param_name,
     Pass True for `semilog` if `param_range` values would be better
     visualized with log scaling. Pass tuple to `figsize` if you 
     wish to override default of (11, 8).
+
+    Please see `validation.cv_engine` for details on other args.
     """
     results = crossvalidate.validate_param_range(
                                 X, y, model_type, param_name, param_range,
-                                [score], other_params, splits, scale_obj)
+                                [score], other_params, **cv_engine_kwargs)
 
     # special handling for iterable hyper-parameter values
     if results.index.levels[0].dtype == "O":
@@ -94,11 +97,67 @@ def validation_curve(X, y, score, model_type, param_name,
     plt.legend(loc="best")
 
 
-def calibration_curve(X, y, model_type, splits=5, model_params={},
-                      calib_types=None, figsize=(11, 8), display_counts=True,
-                      **cv_engine_kwargs):
+def learning_curve(X, y, model_type, score, model_params=None,
+                   splits=5, scale_obj=None, random_state=0,
+                   train_sizes=[0.1, 0.33, 0.55, 0.78, 1.],
+                   figsize=(11, 8)):
+    """
+    Cross validates 'model_type' over different `train_sizes`, which allows 
+    for both insight into model fit and insight into whether model might 
+    benefit from access to more data. Plots results.
+
+    Please see `validation.cv_engine` for details on other args.
+    """
+    if model_params is None:
+        model_params = {}
+    model_obj = model_type(**model_params)
+
+    results = crossvalidate.validate_train_sizes(
+                                X, y, model_obj, score_funcs=[score], 
+                                splits=splits, scale_obj=scale_obj,
+                                train_sizes=train_sizes,
+                                random_state=random_state)
+
+    means = results.groupby(level=0).mean().reset_index()
+    stds = results.groupby(level=0).std().reset_index()
+
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    xtick = ax.set_xticks(means.index)
+
+    plt.plot(means.index, means[(score.__name__, "train")
+                                ].values, 
+             label="train", color="crimson", lw=2)
+    plt.plot(means.index, means[(score.__name__, "test")
+                                ].values, 
+             label="validation", color="teal", lw=2)
+
+    bands = lambda _: (means[(score.__name__, _)]
+                        - stds[(score.__name__, _)],
+                       means[(score.__name__, _)]
+                        + stds[(score.__name__, _)])
+
+    plt.fill_between(means.index, *bands("train"), 
+                     alpha=0.1, color="crimson", lw=2)
+    plt.fill_between(means.index, *bands("test"), 
+                     alpha=0.1, color="teal", lw=2)
+
+    xlab = ax.set_xlabel("training size")
+    xlab = means["index"].map(lambda _: int(round(float(_) * len(y), -2)))
+
+    xlab = ax.set_xticklabels(xlab)
+    ylab = ax.set_ylabel(score.__name__)
+
+    title = plt.title(f"Learning curve: {model_type.__name__}")
+    plt.legend(loc="best")
+
+
+def calibration_curve(X, y, model_type, model_params={}, calib_types=None, 
+                      figsize=(11, 8), display_counts=True, **cv_engine_kwargs):
     """
     Plots calibration curves for original model & passed calibrators.
+
+    Please see `validation.cv_engine` for details on other args.
     """
     def plot_probs_and_counts(results, c, label, plot_counts=display_counts):
         # greb emprirical probability from `results`
@@ -116,16 +175,15 @@ def calibration_curve(X, y, model_type, splits=5, model_params={},
             plt.bar(counts.index, counts["mean"], yerr=counts["std"],
                     color="steelblue", width=.025, alpha=.2, label="bin_count_normalized")
 
-        # fill std around original model's mean calibration
+        # fill std around original model"s mean calibration
         plt.fill_between(probs.index, *bands(probs), alpha=0.1, color=c, lw=2)
 
         # display horizontal grid lines
-        plt.grid(which="major", axis="y", color='grey', linestyle='--')
+        plt.grid(which="major", axis="y", color="grey", linestyle="--")
 
     model_obj = model_type(**model_params)
     results = calibration.cv_calibrate(X=X, y=y,
                                        model_obj=model_obj,
-                                       splits=splits,
                                        calib_types=calib_types,
                                        retain_counts=display_counts,
                                        **cv_engine_kwargs)
@@ -148,10 +206,11 @@ def calibration_curve(X, y, model_type, splits=5, model_params={},
 
     ax.set_xlim(0, 1)
     xlab = ax.set_xlabel("predicted probability (bin)")
+
     ax.set_ylim(0, 1)
     ylab = ax.set_ylabel("empirical probability")
-    title = plt.title("calibration curve: {}".format(
-                                model_type.__name__))
+
+    title = plt.title(f"calibration curve: {model_type.__name__}")
     plt.legend(loc="best")
 
 
