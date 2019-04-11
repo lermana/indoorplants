@@ -151,7 +151,7 @@ def get_peak_and_trough_indices_simple(array_like):
 
 def get_bin_edge_inds_from_hist_inds(indices, bin_edges):
     """
-    Given an array of indices (i.e. integer values - the was built with  
+    Given an array of indices (i.e. integer values - this was built with  
     the results of `get_optima_indices_simple` in mind) and an array of 
     histogram bin edges (assumed to be the second result of `np.histogram`) 
     return a `[num_bins, 2]` array, such that `bin_edges` is re-represented 
@@ -179,16 +179,14 @@ def find_frequency_peaks_and_troughs(series=None, hist=None,
         )
 
 
-def get_series_in_bin_mask(series, bin_bounds):
-    return (series > bin_bounds[0]) & (series < bin_bounds[1])
-
-
-def fliter_series_to_in_bin(series, bin_bounds):
-    return series[get_series_in_bin_mask(series, bin_bounds)]
-
-
-def cnt_series_in_bin(series, bin_bounds, normalize=True):
-    cnt = get_series_in_bin_mask(series, bin_bounds).sum()
-    if normalize:
-        cnt = cnt / len(series)
-    return cnt
+def get_redundant_feature_pairs(feature_distance_series, threshold):
+    """
+    Expects results from a `feature_distances` func. Returns redundant 
+    feature pairs, as determined by passed `threshold` for inter-feature 
+    measurement.
+    """
+    return feature_distance_series[
+                    feature_distance_series < threshold
+                    ].reset_index(
+                    ).iloc[:, :2
+                    ].drop_duplicates()
