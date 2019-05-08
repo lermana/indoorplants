@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/lermana/indoorplants.svg?branch=master)](https://travis-ci.org/lermana/indoorplants)
 
-- named for the wonderful coffe shop _Tommy_ in Montreal
+This library is named for the wonderful coffe shop _Tommy_ in Montreal where, as a good friend of mine once said: "the plants really tie the room together." It is my hope that this library will tie together `pandas`, `sklearn`, and `matplotlib` in ways that are useful for the practicing data scientist.
 
 #### Note
 
