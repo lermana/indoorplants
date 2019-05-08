@@ -22,7 +22,8 @@ def train_and_score(model_obj, score_funcs, X_train, y_train,
 
     model = model_obj.fit(X_train, y_train)
 
-    y_hat_train = model.predict(X_train)
+    if train_scores is True:
+        y_hat_train = model.predict(X_train)
     y_hat_test = model.predict(X_test)
 
     return list(map(apply_score_func, score_funcs))
@@ -95,7 +96,7 @@ def cv_engine(X, y, model_obj, score_funcs, splits=5, scale_obj=None,
                               random_state=random_state)
 
     elif model_obj._estimator_type == "regressor":
-        skf = KFold(n_splits=splits, suffle=True, random_state=random_state)
+        skf = KFold(n_splits=splits, shuffle=True, random_state=random_state)
 
     else:
         raise TypeError("Improper model type.")

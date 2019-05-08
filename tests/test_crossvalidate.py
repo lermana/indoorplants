@@ -12,9 +12,11 @@ class ModelStubBase:
         self.X_fit_shape = None
         self.y_fit_shape = None
         self.fit_called = False
+        self.fit_called_num = 0
 
         self.X_predict_shape = None
         self.predict_called = False
+        self.predict_called_num = 0
 
         for k, v in kwargs.items():
             self.k = v
@@ -23,11 +25,13 @@ class ModelStubBase:
         self.X_fit_shape = X.shape
         self.y_fit_shape = y.shape
         self.fit_called = True
+        self.fit_called_num += 1
         return self
 
     def predict(self, X):
         self.X_predict_shape = X.shape
         self.predict_called = True
+        self.predict_called_num += 1
         return np.zeros(self.y_fit_shape)
 
 
@@ -50,6 +54,7 @@ class ClassifierStub(ModelStubBase):
             self.num_classes = self.y_fit_shape[1]
         
         self.fit_called = True
+        self.fit_called_num += 1
         return self
 
     def predict_proba(self, X):
@@ -109,7 +114,10 @@ class TestCrossvalidate(unittest.TestCase):
                                                 train_scores=False)
 
         self.assertEqual(len(score_funcs), len(results))
-        self.assertTrue(all(map(lambda row: not isinstance(row, collections.Iterable), results)))
+        self.assertTrue(all(map(
+                                lambda row: not isinstance(row, collections.Iterable), 
+                                results
+                            )))
 
         self.assertTrue(model_obj.fit_called)
         self.assertEqual(model_obj.X_fit_shape[0], model_obj.y_fit_shape[0])
@@ -121,20 +129,79 @@ class TestCrossvalidate(unittest.TestCase):
 
     def test_cv_engine(self):
 
-        # get dummy functionality and data
+        # get dummy args
+        X, y = get_dummy_x_y()
+        score_funcs = [dummy_score_func, dummy_score_func, dummy_score_func]
+        splits = 5
 
-        score_funcs = [dummy_score_func, dummy_score_func]
-        X_train, y_train = get_dummy_x_y()
-        X_test, y_test = get_dummy_x_y()
+        # with `model_obj._estimator_type="classifier"` and `train_scores=True`
+        model_obj = ClassifierStub()
+        train_scores = True
 
-        # what do I want to check here?
-            # - correct number of train, test splits  (this should be renamed to 'folds', right?)
-            # - scale obj called correctly (e.g. adter splitting) if passed
-            # - train_and_test called during every split
-            # - each time, correct args passed to train_and_test
+        results = crossvalidate.cv_engine(X, y, model_obj, score_funcs,
+                                          splits, train_scores=train_scores)
 
-        # test with and without train scores
-        # test a couple split numbers
-        # test with and without scale obj (ugh, you'll have to create a sub for this, too...)
-        # test with one score func, two score funcs, three score funcs?
-        # test with classification and regression - should you have different y for regression?
+        self.assertEqual(len(results), splits)
+
+        for score_func_tuple in results:
+            self.assertEqual(len(score_func_tuple), len(score_funcs))
+
+            for train_test_scores in score_func_tuple:
+                self.assertEqual(len(train_test_scores), 2)
+
+        self.assertEqual(model_obj.fit_called_num, splits)
+        self.assertEqual(model_obj.predict_called_num, 2 * splits)
+
+        # with `model_obj._estimator_type="classifier"` and `train_scores=False`
+        model_obj = ClassifierStub()
+        train_scores = False
+
+        results = crossvalidate.cv_engine(X, y, model_obj, score_funcs,
+                                          splits, train_scores=train_scores)
+
+        self.assertEqual(len(results), splits)
+
+        for score_func_tuple in results:
+            self.assertEqual(len(score_func_tuple), len(score_funcs))
+
+            for score in score_func_tuple:
+                self.assertTrue(isinstance(score, float))
+
+        self.assertEqual(model_obj.fit_called_num, splits)
+        self.assertEqual(model_obj.predict_called_num, splits)
+
+        # with `model_obj._estimator_type="regressor"` and `train_scores=True`
+        model_obj = RegressorStub()
+        train_scores = True
+
+        results = crossvalidate.cv_engine(X, y, model_obj, score_funcs,
+                                          splits, train_scores=train_scores)
+
+        self.assertEqual(len(results), splits)
+
+        for score_func_tuple in results:
+            self.assertEqual(len(score_func_tuple), len(score_funcs))
+
+            for train_test_scores in score_func_tuple:
+                self.assertEqual(len(train_test_scores), 2)
+
+        self.assertEqual(model_obj.fit_called_num, splits)
+        self.assertEqual(model_obj.predict_called_num, 2 * splits)
+
+        # with `model_obj._estimator_type="regressor"` and `train_scores=False`
+        model_obj = RegressorStub()
+        train_scores = False
+
+        results = crossvalidate.cv_engine(X, y, model_obj, score_funcs,
+                                          splits, train_scores=train_scores)
+
+        self.assertEqual(len(results), splits)
+
+        for score_func_tuple in results:
+            self.assertEqual(len(score_func_tuple), len(score_funcs))
+
+            for score in score_func_tuple:
+                self.assertTrue(isinstance(score, float))
+
+        self.assertEqual(model_obj.fit_called_num, splits)
+        self.assertEqual(model_obj.predict_called_num, splits)
