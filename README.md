@@ -8,7 +8,7 @@ This library is named for the wonderful coffee shop _Tommy_ in Montreal where, a
 
 `indoorplants` provides data analysis and model validation tools, and the top-level namespace is broken out as such. Most of the code assumes that data is stored in `DataFrame` instances, and models are assumed to provide the `sklearn` interface. This code is built for *Python* 3.6+.
 
-#### High-Level Description of Selected Functionality
+### High-Level Description of Selected Functionality
 
 On the _analysis_ side of things:
 - `analysis.exploratory` aids with exploratory data analysis
