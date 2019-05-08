@@ -12,7 +12,7 @@ This library is named for the wonderful coffee shop _Tommy_ in Montreal where, a
 
 On the _analysis_ side of things:
 - `analysis.exploratory` aids with exploratory data analysis
-- `analysis.wrangle` provides data wrangling functionality, including for detecting leaky features in classification problems
+- `analysis.wrangle` is for data wrangling, including the detection of leaky features in classification problems
 - `analysis.features` at the moment allows for calculating feature distances
 
 On the _validation_ side of things:
