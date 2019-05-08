@@ -2,24 +2,25 @@
 
 [![Build Status](https://travis-ci.org/lermana/indoorplants.svg?branch=master)](https://travis-ci.org/lermana/indoorplants)
 
-This library is named for the wonderful coffe shop _Tommy_ in Montreal where, as a good friend of mine once said: "the plants really tie the room together." It is my hope that this library will tie together `pandas`, `sklearn`, and `matplotlib` in ways that are useful for the practicing data scientist.
+### Background
 
-#### Note
+This library is named for the wonderful coffee shop _Tommy_ in Montreal where, as a good friend said: "the plants really tie the room together." It is my hope that this library will tie together `pandas`, `sklearn`, and `matplotlib` in ways that are useful for the practicing data scientist.
 
-This repo (including its documentation) is still under construction, but currently available functionality is detailed briefly below. Some example usage can be found in the *census_data_analysis* notebook.
+`indoorplants` provides data analysis and model validation tools, and the top-level namespace is broken out as such. Most of the code assumes that data is stored in `DataFrame` instances, and models are assumed to provide the `sklearn` interface. This code is built for *Python* 3.6+.
 
-#### Current functionality 
+#### High-Level Description of Selected Functionality
 
-This *Python* repo provides some data analysis and model evaluation tools to be used with *Pandas* data and *scikit-learn* models. Built using *Python* 3.6, *Pandas* .2, *sklearn* .18 and *Numpy* 1.12
+On the _analysis_ side of things:
+- `analysis.exploratory` aids with exploratory data analysis
+- `analysis.wrangle` provides data wrangling functionality, including for detecting leaky features in classification problems
+- `analysis.features` at the moment allows for calculating feature distances
 
-`analysis/exploratory.py` provides visualization capabilities for exploratory data analysis purposes.
+On the _validation_ side of things:
+- `validation.crossvalidate` provides the core cross-validation functions
+- `validation.curves` offers curves to be used for ML model evaluation - validation, learning, calibration, and precision-recall.
 
-`validation/crossvalidate.py` provides cross-validation functionality.
-
-`validation/curves.py` provides curves to be used for ML model evaluation - validation, calibration, and precision-recall.
-
-`validation/boundaries.py` provides tools for cross validating over different decision boundaries. 
+Example usage can be found in the *census_data_analysis* notebook.
 
 #### Installation
 
-After cloning the repo, enter *indoorplants/indoorplants/* and run `pip install -e .`
+After cloning the repo, enter the top-level folder and run `pip install .` It is my hope that this library will exist in `pypi` in the near future.
