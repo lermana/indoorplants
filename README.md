@@ -19,7 +19,7 @@ On the _validation_ side of things:
 - `validation.crossvalidate` provides the core cross-validation functions
 - `validation.curves` offers curves for ML model evaluation, including: validation, learning, and calibration
 
-Example usage can be found in the *census_data_analysis* notebook.
+Example usage can be found in the `census_data_analysis` notebook.
 
 #### Installation
 
