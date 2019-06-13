@@ -21,6 +21,6 @@ On the _validation_ side of things:
 
 Example usage can be found in the `census_data_analysis` notebook.
 
-#### Installation
+### Installation
 
 After cloning the repo, enter the top-level folder and run `pip install .` It is my hope that this library will exist in `pypi` in the near future.
