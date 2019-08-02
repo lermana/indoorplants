@@ -106,7 +106,7 @@ def box_plot_by_class(eda_df, class_col, feature):
 
 
 def center_scale_plot(series, center_func, scale_func, bins=None,
-                      figsize=(11, 8), return_bins=False):
+                      figsize=(11, 8), return_bins=False, ndigits=4):
     """produce histogram overlayed with bands corresponding to
     units of scale from the center. user supplies center and 
     scale functions"""
@@ -125,17 +125,17 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
     xmaxtick = ax.get_xticks()[-1]
     
     # get center and scale
-    center = round(center_func(series), 1)
-    scale = round(scale_func(series), 1)
+    center = round(center_func(series), ndigits)
+    scale = round(scale_func(series), ndigits)
     
     # plot box with center & scale
     bbox = {'fc': '1', 'pad': 3}
     ax.annotate(
     """{}: {}
 {}: {}""".format(center_func.__name__,
-                     round(center, 1),
+                     round(center, ndigits),
                      scale_func.__name__,
-                     round(scale, 1)),
+                     round(scale, ndigits)),
         xy=(.8* xmaxtick, .8 * ymaxtick),
         bbox=bbox)
 
@@ -150,7 +150,7 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
     
     # plot first negative band if applicable
     if ax.get_xticks()[0] < center - scale:
-        bandn1 = round(center - scale, 1)
+        bandn1 = round(center - scale, ndigits)
         ax.axvspan(bandn1,
                    center, 
                    alpha=0.5, 
@@ -163,7 +163,7 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
                    color='blue')
 
     # plot first band
-    band1 = round(center + scale, 1)
+    band1 = round(center + scale, ndigits)
     ax.axvspan(center,
                band1, 
                alpha=0.5, 
@@ -180,14 +180,14 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
 
     # plot negative second band if applicable
     if ax.get_xticks()[0] < center -  2 * scale:
-        bandn2 = round(center - 2 * scale, 1)
+        bandn2 = round(center - 2 * scale, ndigits)
         ax.axvspan(bandn2,
                    bandn1, 
                    alpha=0.5, 
                    color='y')
 
     # plot second band
-    band2 = round(center + 2 * scale, 1)
+    band2 = round(center + 2 * scale, ndigits)
     ax.axvspan(band1,
                band2, 
                alpha=0.5, 
@@ -204,14 +204,14 @@ def center_scale_plot(series, center_func, scale_func, bins=None,
     
     # plot negative third band if applicable
     if ax.get_xticks()[0] < center -  3 * scale:
-        bandn3 = round(center - 3 * scale, 1)
+        bandn3 = round(center - 3 * scale, ndigits)
         ax.axvspan(bandn3,
                    bandn2, 
                    alpha=0.5, 
                    color='purple')
 
     # plot third band
-    band3 = round(center + 3 * scale, 1)
+    band3 = round(center + 3 * scale, ndigits)
     ax.axvspan(band2,
                band3, 
                alpha=0.5, 
