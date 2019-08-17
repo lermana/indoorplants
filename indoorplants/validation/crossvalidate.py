@@ -132,7 +132,7 @@ def format_cv_results(results, score_funcs, train_scores=True):
     """
     if train_scores is False:
         cols = [score.__name__ for score in score_funcs]
-        return pd.DataFrame(res, columns=cols)
+        return pd.DataFrame(results, columns=cols)
 
     else:
         res = np.array([tuple(chain(*trial)) for trial in results])
