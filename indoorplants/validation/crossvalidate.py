@@ -236,8 +236,9 @@ def cv_score(X, y, model_obj, score_funcs, stats_to_run=["mean", "std"],
     return describe_dataframe(
                 format_cv_results(
                     cv_engine(
-                        X, y, model_obj, score_funcs, **cv_engine_kwargs
-                        ), 
+                        X, y, model_obj, score_funcs, train_scores=train_scores,
+                        **cv_engine_kwargs
+                        ),
                     score_funcs, train_scores))
 
 
