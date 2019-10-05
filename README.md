@@ -23,4 +23,4 @@ Example usage can be found in the `census_data_analysis` notebook.
 
 ### Installation
 
-After cloning the repo, enter the top-level folder and run `pip install .` It is my hope that this library will exist in `pypi` in the near future.
+You can run `pip install indoorplants` to get this repo.
