@@ -2,17 +2,22 @@ language:
 - python
 python:
 - 3.6
+env:
+  global:
+    - INDOORPLANTS_VERSION=$(grep current_version setup.cfg | cut -d \= -f 2 | xargs)
+    - TRAVIS_TAG=v${INDOORPLANTS_VERSION}
 install:
-- pip install -r requirements.txt
+- pip install .
+- pip install bumpversion
 script:
 - python -m unittest tests/*
 branches:
   only:
   - master
+after_success:
+- bumpversion --verbose minor
 deploy:
   provider: pypi
   user: __token__
   password:
     secure: FOjq9a1M/dpcyTwbzSs3R2TfTsXDs832ipfGWBmeJw2vc99u9Qe9yUJr6+s1fDSOH4nPYSSSeFSW9fYntseNXhE5pajadkO2zD+4XY3SfdD2hswh7Wav2T6I/Nku+6MfyCssh5q65ZEOl2SxA/8P2/8t1VrZm9jcaHH/U/80amGfByoPRCe/ZMFZ9UnDARlnhNmgmmgHsxGavlt1iBbN25On1fK3eWd5TudKIyUK7tmzII5y1PivpCMrlTJ2yeuI+5jbk0LoDGbv3LIn0CfIiT0mIiy30GqfDSpgWukRDHxLqJaxtTXSKwCE1tvJEkDsdFUno9184LM1iWl5ZZ/kfX70+PpG0zPFoT6CnmJ0PUu+EvU5dlwFIeQbL1WsKWsLIRVJLaCeoR/kOnHxLUry8knPn8rfjJJucm9J/cOg1SvRAo6218uQNqypPKEfdLdIgACulNgrot7s7J5Kvobn7yCtt8wx9N7rKCxy+2KrNXzXigwS5hcnvJZyfrqQbmyuxpSnSgDr/9B8PD8RrYa32x0rKk2C0U93Rv2fN0PDD7uZ5+czuNcMT7yyxRz6Z4vEM+HX5mgO6iXJr6Pk/Rh0jeIhTDvl2QuQ6WOWacEMTMpTsT3dEnlLunOrJZGSk9DKpIwbRe52Jli9AMrh11R2pROuYs3n6SD36o2+osoJ/ds=
-  on:
-    tags: true
