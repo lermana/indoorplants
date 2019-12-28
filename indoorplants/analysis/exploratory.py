@@ -105,7 +105,7 @@ def box_plot_by_class(eda_df, class_col, feature):
     return ax
 
 
-def center_scale_plot(series, center_func, scale_func, bins=None,
+def center_scale_plot(series, center_func=np.mean, scale_func=np.std, bins=None,
                       figsize=(11, 8), return_bins=False, ndigits=4):
     """produce histogram overlayed with bands corresponding to
     units of scale from the center. user supplies center and 
