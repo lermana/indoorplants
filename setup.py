@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-	name="indoorplants",
-    version="1.0",
+    name="indoorplants",
+    version="1.1",
     description="Tools for data analysis and model validation",
     author="Abe Lerman",
     url="https://github.com/lermana/indoorplants",
@@ -10,7 +10,7 @@ setup(
     install_requires=["numpy",
                       "scipy",
                       "pandas",
-                      "sklearn",
+                      "scikit-learn",
                       "matplotlib",
                       "requests"]
     )
