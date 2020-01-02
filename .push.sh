@@ -11,9 +11,11 @@ commit_repo() {
 }
 
 upload_files() {
-  if ! git ls-remote --exit-code origin > /dev/null 2>&1; then
-        git remote add origin https://${GH_TOKEN}@github.com/lermana/indoorplants.git
+  if  git ls-remote --exit-code origin > /dev/null 2>&1; then
+	  git remote rm origin
   fi
+
+  git remote add origin https://${GH_TOKEN}@github.com/lermana/indoorplants.git
   git push origin master
 }
 
