@@ -17,7 +17,7 @@ branches:
   - master
 after_success:
 - bumpversion --verbose minor
-- ./.push.sh
+- chmod +x .push.sh; ./.push.sh
 deploy:
   provider: pypi
   user: __token__
