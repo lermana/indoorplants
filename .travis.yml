@@ -9,14 +9,14 @@ env:
   - secure: BrfSK5xh4ZnT/ueNUCnhH4W+n6iI5/GXRouXvFAvmSeRS1tJlMQIyVR87adNDEHx6BpOSuBxq8D6HKd+wu08s+jM2XEcdXMyn8StzyLYrRrFpbAewBoybwgyskIstv4QjMxYixL83VPX4wFNe2nXQCOL5RkQsKFbvrVJMM/cnPRD8/fxGaxCT6jgkzn6Pm9eahQ5evt4NVrf9p7rjOTeyty2Rsd0Lfk3lZZdN51iBRY6j+EyLNcG7Lp3NApOg8/pbfqCA0OFCgKQGLWilrIVSp+FdZbmv9yicPEDwBkck39nQUvdpEict7ap4JDhBujhvJU7pdT7CICKe35FXputHyFz5gZxU9+NDDqcCb8kvD8qV5xHEs7uSgl7t7t+pImkpl5y8SlylnI88XOw8YSB2hGcrX7xGimkTPqzBTS3hosj0qNmhn6yc49HpFyxP/7cBN2oH+83KkD6ODqINROWJurtn5uBA/mkh2WJ34o9cTh0/WxONNALi/dqh1qD7IdMiA+q82gX2vHvsr3m5vpRPJImV9XVASJ5GpAeCQ2P1ZVR521ts+aGgQ1ifz5ZL8GkwvMDmvUjDK5/b19TxARDAgLsnzbvJyYrbG5F3Ob/l0ltqkYXGjx1d/j78rdHirSNJOZrueHHnGlbZJq8dUA/0FDoT9yFt70KgIwJBftwz+4=
 install:
 - pip install .
-- pip install bumpversion
+- pip install bump2version
 script:
 - python -m unittest tests/*
 branches:
   only:
   - master
 after_success:
-- bumpversion --verbose minor
+- bump2version --verbose minor
 - chmod +x .push.sh; ./.push.sh
 deploy:
   provider: pypi
