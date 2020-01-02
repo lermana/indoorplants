@@ -20,5 +20,5 @@ upload_files() {
 }
 
 setup_git
-upload_files
+commit_repo
 upload_files
