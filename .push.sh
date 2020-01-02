@@ -16,7 +16,7 @@ upload_files() {
   fi
 
   git remote add origin https://${GH_TOKEN}@github.com/lermana/indoorplants.git
-  git push origin master
+  git push --tags origin master
 }
 
 setup_git
