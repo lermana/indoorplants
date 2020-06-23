@@ -14,6 +14,9 @@ from indoorplants.validation import crossvalidate, \
 def validation_curve(X, y, score, model_type, param_name,
                      param_range, other_params={},
                      semilog=False, figsize=(11, 8),
+                     matplotlib_kwargs_xlabels={},
+                     matplotlib_kwargs_xticklabels={},
+                     matplotlib_kwargs_ylabels={},
                      **cv_engine_kwargs):
     """
     Cross validates `model_type` across passed parameters and
@@ -90,9 +93,9 @@ def validation_curve(X, y, score, model_type, param_name,
     plt.fill_between(means.index, *bands("test"), alpha=0.1, color="navy", lw=2)
 
     # final plot formatting
-    xlab = ax.set_xlabel(param_name)
-    xlab = ax.set_xticklabels(means[param_name].values)
-    ylab = ax.set_ylabel(score.__name__)
+    xlab = ax.set_xlabel(param_name, **matplotlib_kwargs_xlabels)
+    xlab = ax.set_xticklabels(means[param_name].values, **matplotlib_kwargs_xticklabels)
+    ylab = ax.set_ylabel(score.__name__, **matplotlib_kwargs_ylabels)
     title = plt.title(f"validation curve: {model_type.__name__}, across {param_name}")
     plt.legend(loc="best")
 
