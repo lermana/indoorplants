@@ -106,8 +106,8 @@ def cv_engine(X, y, model_obj, score_funcs, splits=5, scale_obj=None,
         y_train = y.iloc[train]
         y_test = y.iloc[test]
 
-        X_train = X.iloc[train, :]
-        X_test = X.iloc[test, :]
+        X_train = X.iloc[train,]
+        X_test = X.iloc[test,]
 
         if scale_obj is not None:
             X_train = scale_obj.fit_transform(X_train)
