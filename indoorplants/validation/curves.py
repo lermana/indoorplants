@@ -247,7 +247,7 @@ def precision_recall_curve(X, y, model_type, scale_obj=None,
                     xytext=(row[1] - .01, 
                             row[2] + .02))
     
-    plt.xlabel("pecall")
+    plt.xlabel("recall")
     plt.ylabel("precision")
     title = plt.title("precision & recall by decision boundary: {}".format(
                                         model_type.__name__))
