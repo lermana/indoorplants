@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="indoorplants",
-    version="1.4
+    version="1.4",
     description="Tools for data analysis and model validation",
     author="Abe Lerman",
     url="https://github.com/lermana/indoorplants",
